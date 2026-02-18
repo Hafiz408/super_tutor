@@ -28,10 +28,17 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. When a URL fails (paywall, empty page, invalid), user sees a specific error message and is offered a text-paste fallback to continue without losing their session
   4. Notes, flashcards, and quiz are all observably different in tone and complexity across the three tutoring types (Micro Learning, Teaching a Kid, Advanced) on the same input
   5. Switching the AI provider or model requires only a config/environment change — no code changes are needed
-**Plans**: TBD
+**Plans**: 8 plans
 
 Plans:
-- [ ] 01-01: TBD
+- [ ] 01-01-PLAN.md — Backend foundation: config, Pydantic models, model factory, personas
+- [ ] 01-02-PLAN.md — Frontend scaffold: Next.js 15, OAT UI CSS, shared TypeScript session types
+- [ ] 01-03-PLAN.md — URL extraction chain (TDD): Jina → trafilatura → Playwright with fallback and error classification
+- [ ] 01-04-PLAN.md — Agno agents + SessionWorkflow: notes, flashcard, quiz agents with progress streaming
+- [ ] 01-05-PLAN.md — FastAPI SSE endpoint: POST /sessions, GET /sessions/{id}/stream, GET /sessions/{id}
+- [ ] 01-06-PLAN.md — Landing page + create form: marketing page, tutoring mode cards, URL failure fallback
+- [ ] 01-07-PLAN.md — Loading page + study page: SSE progress bar, sidebar navigation, notes/flashcards/quiz panels
+- [ ] 01-08-PLAN.md — End-to-end verification checkpoint: human confirms all five success criteria
 
 ### Phase 2: Topic Description Path
 **Goal**: Users can create a study session from any topic description, without needing a URL
@@ -64,6 +71,6 @@ Phases execute in numeric order: 1 → 2 → 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. URL Session Pipeline | 0/TBD | Not started | - |
+| 1. URL Session Pipeline | 0/8 | Not started | - |
 | 2. Topic Description Path | 0/TBD | Not started | - |
 | 3. Study Experience Polish | 0/TBD | Not started | - |
