@@ -21,7 +21,7 @@
 
 ### Study Experience
 
-- [ ] **STUDY-01**: All study materials (notes, flashcards, quiz) are presented on a single page with tab navigation (Notes | Flashcards | Quiz)
+- [x] **STUDY-01**: All study materials (notes, flashcards, quiz) are presented on a single page with tab navigation (Notes | Flashcards | Quiz)
 - [ ] **STUDY-02**: Flashcards have an interactive flip animation — user clicks to reveal the answer
 
 ### AI Infrastructure
@@ -75,7 +75,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | GEN-01 | Phase 1 | Pending |
 | GEN-02 | Phase 1 | Pending |
 | GEN-03 | Phase 1 | Pending |
-| STUDY-01 | Phase 1 | Pending |
+| STUDY-01 | Phase 1 | Complete |
 | STUDY-02 | Phase 3 | Pending |
 | AGENT-01 | Phase 1 | Complete (01-01) |
 | AGENT-02 | Phase 1 | Complete (01-01) |

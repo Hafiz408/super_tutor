@@ -10,27 +10,27 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 ## Current Position
 
 Phase: 1 of 3 (URL Session Pipeline)
-Plan: 1 of 5 in current phase
+Plan: 2 of 8 in current phase
 Status: In progress
-Last activity: 2026-02-18 — Plan 01 complete: backend foundation scaffold
+Last activity: 2026-02-19 — Plan 02 complete: Next.js frontend bootstrap with OAT UI and TypeScript types
 
-Progress: [█░░░░░░░░░] 7%
+Progress: [██░░░░░░░░] 14%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: 2min
-- Total execution time: 2min
+- Total plans completed: 2
+- Average duration: 3min
+- Total execution time: 6min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-url-session-pipeline | 1 | 2min | 2min |
+| 01-url-session-pipeline | 2 | 6min | 3min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (2min)
+- Last 5 plans: 01-01 (2min), 01-02 (4min)
 - Trend: -
 
 *Updated after each plan completion*
@@ -49,6 +49,9 @@ Recent decisions affecting current work:
 - [01-01]: Lazy imports inside get_model() branches — provider SDK only imported when selected, avoiding ImportError if optional packages absent
 - [01-01]: lru_cache on get_settings() — single Settings instance per process, avoiding repeated .env reads
 - [01-01]: PERSONAS stored as plain dict[str, str] — system prompts editable without touching agent code
+- [01-02]: OAT UI CDN URL is https://oat.ink/oat.min.css (plan had oat.css which 404s; confirmed oat.min.css returns 200)
+- [01-02]: No oat-ui npm package exists; CDN link in root layout <head> is the integration approach
+- [01-02]: .env.local is gitignored by Next.js defaults; NEXT_PUBLIC_API_URL must be created manually
 
 ### Pending Todos
 
@@ -62,6 +65,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-18
-Stopped at: Completed 01-01-PLAN.md — backend foundation (config, models, model factory, personas)
+Last session: 2026-02-19
+Stopped at: Completed 01-02-PLAN.md — Next.js frontend bootstrap (layout, OAT UI, TypeScript session types)
 Resume file: None
