@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* ─── Local tokens ──────────────────────────────────────────────── */
+:root {
+  --z-fixed: 100; /* site chrome: sticky header, bottom nav */
+}
+
 /* ─── Base ─────────────────────────────────────────────────────── */
 body {
   font-family: var(--font-sans);
@@ -243,7 +248,7 @@ body {
 .site-header {
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: var(--z-fixed);
   background: var(--background);
   border-bottom: 1px solid var(--border);
   padding: 0 var(--space-5);
@@ -308,7 +313,7 @@ body {
     right: 0;
     background: var(--background);
     border-top: 1px solid var(--border);
-    z-index: 100;
+    z-index: var(--z-fixed);
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
@@ -338,11 +343,11 @@ body {
   align-items: center;
   justify-content: center;
   padding: var(--space-2) var(--space-1);
-  gap: 3px;
+  gap: var(--space-1);
   border: none;
   background: transparent;
   cursor: pointer;
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--muted-foreground);
   font-family: var(--font-sans);
   text-transform: capitalize;
