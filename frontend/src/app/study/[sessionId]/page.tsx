@@ -14,6 +14,27 @@ const MODE_LABELS: Record<TutoringType, string> = {
 
 type Tab = "notes" | "flashcards" | "quiz";
 
+const TAB_ICONS: Record<Tab, React.ReactNode> = {
+  notes: (
+    <svg className="bottom-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z" />
+    </svg>
+  ),
+  flashcards: (
+    <svg className="bottom-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+      <rect x="2" y="7" width="20" height="14" rx="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16 3H8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z" />
+    </svg>
+  ),
+  quiz: (
+    <svg className="bottom-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+      <circle cx="12" cy="12" r="10" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 17h.01" />
+    </svg>
+  ),
+};
+
 export default function StudyPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
 
@@ -46,7 +67,7 @@ export default function StudyPage() {
 
   if (loading) {
     return (
-      <main className="vstack items-center justify-center" style={{ minHeight: "100vh" }}>
+      <main className="vstack items-center justify-center" style={{ minHeight: "80vh" }}>
         <span className="spinner" />
       </main>
     );
@@ -54,7 +75,7 @@ export default function StudyPage() {
 
   if (error || !session) {
     return (
-      <main className="vstack items-center justify-center" style={{ minHeight: "100vh" }}>
+      <main className="vstack items-center justify-center" style={{ minHeight: "80vh" }}>
         <p style={{ color: "var(--muted-foreground)" }}>
           Session not found.{" "}
           <Link href="/create" style={{ color: "var(--primary)" }}>Start a new session</Link>
@@ -81,12 +102,17 @@ export default function StudyPage() {
   const correctCount = answers.filter((a, i) => a === session!.quiz[i]?.answer_index).length;
 
   return (
-    <div className="flex" style={{ minHeight: "100vh" }}>
+    <div style={{ display: "flex", minHeight: "calc(100vh - 52px)" }}>
 
-      {/* Sidebar */}
+      {/* Desktop sidebar — hidden on mobile via CSS */}
       <aside className="study-sidebar">
         <div style={{ marginBottom: "var(--space-6)" }}>
-          <p style={{ fontWeight: "var(--font-semibold)", marginBottom: "var(--space-2)", fontSize: "var(--text-2)", lineHeight: "1.4" }}>
+          <p style={{
+            fontWeight: "var(--font-semibold)",
+            marginBottom: "var(--space-2)",
+            fontSize: "var(--text-2)",
+            lineHeight: "1.4",
+          }}>
             {session.source_title}
           </p>
           <span className="badge" style={{ fontSize: "var(--text-1)" }}>
@@ -113,136 +139,172 @@ export default function StudyPage() {
         </div>
       </aside>
 
-      {/* Content */}
-      <main style={{ flex: 1, padding: "var(--space-8)", maxWidth: "780px" }}>
+      {/* Right column: mobile header + main content + mobile bottom nav */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
-        {/* Notes */}
-        {activeTab === "notes" && (
-          <article className="prose">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{session.notes}</ReactMarkdown>
-          </article>
-        )}
+        {/* Mobile meta-header — hidden on desktop via CSS */}
+        <div className="study-mobile-header">
+          <p style={{
+            fontWeight: "var(--font-semibold)",
+            fontSize: "var(--text-2)",
+            lineHeight: "1.4",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}>
+            {session.source_title}
+          </p>
+          <span className="badge" style={{ fontSize: "var(--text-1)", alignSelf: "flex-start" }}>
+            {MODE_LABELS[session.tutoring_type]}
+          </span>
+        </div>
 
-        {/* Flashcards */}
-        {activeTab === "flashcards" && (
-          <div>
-            <h2 style={{ fontSize: "var(--text-4)", fontWeight: "var(--font-semibold)", marginBottom: "var(--space-6)" }}>
-              Flashcards
-            </h2>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "var(--space-4)" }}>
-              {session.flashcards.map((card, i) => (
-                <article key={i} className="card" style={{ padding: "var(--space-5)", minHeight: "120px" }}>
-                  <p style={{ fontWeight: "var(--font-medium)", fontSize: "var(--text-2)" }}>{card.front}</p>
-                </article>
-              ))}
+        {/* Main content */}
+        <main className="study-main-content" style={{ flex: 1, padding: "var(--space-8)", maxWidth: "780px" }}>
+
+          {/* Notes */}
+          {activeTab === "notes" && (
+            <article className="prose">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{session.notes}</ReactMarkdown>
+            </article>
+          )}
+
+          {/* Flashcards */}
+          {activeTab === "flashcards" && (
+            <div>
+              <h2 style={{ fontSize: "var(--text-4)", fontWeight: "var(--font-semibold)", marginBottom: "var(--space-6)" }}>
+                Flashcards
+              </h2>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "var(--space-4)" }}>
+                {session.flashcards.map((card, i) => (
+                  <article key={i} className="card" style={{ padding: "var(--space-5)", minHeight: "120px" }}>
+                    <p style={{ fontWeight: "var(--font-medium)", fontSize: "var(--text-2)" }}>{card.front}</p>
+                  </article>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Quiz */}
-        {activeTab === "quiz" && (
-          <div>
-            <h2 style={{ fontSize: "var(--text-4)", fontWeight: "var(--font-semibold)", marginBottom: "var(--space-6)" }}>
-              Quiz
-            </h2>
+          {/* Quiz */}
+          {activeTab === "quiz" && (
+            <div>
+              <h2 style={{ fontSize: "var(--text-4)", fontWeight: "var(--font-semibold)", marginBottom: "var(--space-6)" }}>
+                Quiz
+              </h2>
 
-            {quizPhase === "answering" && session.quiz[currentQ] && (
-              <div className="vstack" style={{ gap: "var(--space-4)" }}>
-                <p style={{ fontSize: "var(--text-1)", color: "var(--muted-foreground)" }}>
-                  Question {currentQ + 1} of {session.quiz.length}
-                </p>
-                <p style={{ fontSize: "var(--text-3)", fontWeight: "var(--font-semibold)" }}>
-                  {session.quiz[currentQ].question}
-                </p>
-
-                <div className="vstack" style={{ gap: "var(--space-2)" }}>
-                  {session.quiz[currentQ].options.map((option, i) => {
-                    const answered = answers[currentQ] !== null;
-                    const isSelected = answers[currentQ] === i;
-                    const isCorrect = i === session.quiz[currentQ].answer_index;
-                    let extraClass = "";
-                    if (answered && isCorrect) extraClass = " quiz-option-correct";
-                    else if (answered && isSelected) extraClass = " quiz-option-wrong";
-
-                    return (
-                      <button
-                        key={i}
-                        onClick={() => selectAnswer(i)}
-                        disabled={answered}
-                        className={`quiz-option${extraClass}`}
-                      >
-                        {option}
-                        {answered && isCorrect && " ✓"}
-                        {answered && isSelected && !isCorrect && " ✗"}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {answers[currentQ] !== null && (
-                  <button onClick={nextQuestion} className="btn btn-ghost" style={{ alignSelf: "flex-start" }}>
-                    {currentQ < session.quiz.length - 1 ? "Next question →" : "See results →"}
-                  </button>
-                )}
-              </div>
-            )}
-
-            {quizPhase === "reviewing" && (
-              <div className="vstack" style={{ gap: "var(--space-6)" }}>
-                <div>
-                  <h3 style={{ fontSize: "var(--text-4)", fontWeight: "var(--font-bold)" }}>
-                    You scored {correctCount} / {session.quiz.length}
-                  </h3>
-                  <p style={{ color: "var(--muted-foreground)", marginTop: "var(--space-2)" }}>
-                    Review your answers below.
-                  </p>
-                </div>
-
+              {quizPhase === "answering" && session.quiz[currentQ] && (
                 <div className="vstack" style={{ gap: "var(--space-4)" }}>
-                  {session.quiz.map((q, i) => {
-                    const userAnswer = answers[i];
-                    const correct = userAnswer === q.answer_index;
-                    return (
-                      <article
-                        key={i}
-                        className="card"
-                        style={{
-                          padding: "var(--space-4)",
-                          borderLeft: `4px solid var(${correct ? "--success" : "--danger"})`,
-                        }}
-                      >
-                        <p style={{ fontWeight: "var(--font-semibold)", marginBottom: "var(--space-2)" }}>
-                          {i + 1}. {q.question}
-                        </p>
-                        <p style={{ fontSize: "var(--text-1)", color: "var(--success-foreground)" }}>
-                          ✓ {q.options[q.answer_index]}
-                        </p>
-                        {!correct && userAnswer !== null && (
-                          <p style={{ fontSize: "var(--text-1)", color: "var(--danger-foreground)", marginTop: "var(--space-1)" }}>
-                            ✗ Your answer: {q.options[userAnswer]}
-                          </p>
-                        )}
-                      </article>
-                    );
-                  })}
-                </div>
+                  <p style={{ fontSize: "var(--text-1)", color: "var(--muted-foreground)" }}>
+                    Question {currentQ + 1} of {session.quiz.length}
+                  </p>
+                  <p style={{ fontSize: "var(--text-3)", fontWeight: "var(--font-semibold)" }}>
+                    {session.quiz[currentQ].question}
+                  </p>
 
-                <button
-                  className="btn btn-ghost"
-                  style={{ alignSelf: "flex-start" }}
-                  onClick={() => {
-                    setCurrentQ(0);
-                    setAnswers(new Array(session!.quiz.length).fill(null));
-                    setQuizPhase("answering");
-                  }}
-                >
-                  Retake quiz
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </main>
+                  <div className="vstack" style={{ gap: "var(--space-2)" }}>
+                    {session.quiz[currentQ].options.map((option, i) => {
+                      const answered = answers[currentQ] !== null;
+                      const isSelected = answers[currentQ] === i;
+                      const isCorrect = i === session.quiz[currentQ].answer_index;
+                      let extraClass = "";
+                      if (answered && isCorrect) extraClass = " quiz-option-correct";
+                      else if (answered && isSelected) extraClass = " quiz-option-wrong";
+
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => selectAnswer(i)}
+                          disabled={answered}
+                          className={`quiz-option${extraClass}`}
+                        >
+                          {option}
+                          {answered && isCorrect && " ✓"}
+                          {answered && isSelected && !isCorrect && " ✗"}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {answers[currentQ] !== null && (
+                    <button onClick={nextQuestion} className="btn btn-ghost" style={{ alignSelf: "flex-start" }}>
+                      {currentQ < session.quiz.length - 1 ? "Next question →" : "See results →"}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {quizPhase === "reviewing" && (
+                <div className="vstack" style={{ gap: "var(--space-6)" }}>
+                  <div>
+                    <h3 style={{ fontSize: "var(--text-4)", fontWeight: "var(--font-bold)" }}>
+                      You scored {correctCount} / {session.quiz.length}
+                    </h3>
+                    <p style={{ color: "var(--muted-foreground)", marginTop: "var(--space-2)" }}>
+                      Review your answers below.
+                    </p>
+                  </div>
+
+                  <div className="vstack" style={{ gap: "var(--space-4)" }}>
+                    {session.quiz.map((q, i) => {
+                      const userAnswer = answers[i];
+                      const correct = userAnswer === q.answer_index;
+                      return (
+                        <article
+                          key={i}
+                          className="card"
+                          style={{
+                            padding: "var(--space-4)",
+                            borderLeft: `4px solid var(${correct ? "--success" : "--danger"})`,
+                          }}
+                        >
+                          <p style={{ fontWeight: "var(--font-semibold)", marginBottom: "var(--space-2)" }}>
+                            {i + 1}. {q.question}
+                          </p>
+                          <p style={{ fontSize: "var(--text-1)", color: "var(--success-foreground)" }}>
+                            ✓ {q.options[q.answer_index]}
+                          </p>
+                          {!correct && userAnswer !== null && (
+                            <p style={{ fontSize: "var(--text-1)", color: "var(--danger-foreground)", marginTop: "var(--space-1)" }}>
+                              ✗ Your answer: {q.options[userAnswer]}
+                            </p>
+                          )}
+                        </article>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    className="btn btn-ghost"
+                    style={{ alignSelf: "flex-start" }}
+                    onClick={() => {
+                      setCurrentQ(0);
+                      setAnswers(new Array(session!.quiz.length).fill(null));
+                      setQuizPhase("answering");
+                    }}
+                  >
+                    Retake quiz
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </main>
+
+        {/* Mobile bottom tab bar — hidden on desktop via CSS */}
+        <nav className="study-bottom-nav">
+          {(["notes", "flashcards", "quiz"] as Tab[]).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`bottom-tab${activeTab === tab ? " bottom-tab-active" : ""}`}
+            >
+              {TAB_ICONS[tab]}
+              {tab}
+            </button>
+          ))}
+        </nav>
+
+      </div>
     </div>
   );
 }
