@@ -12,7 +12,7 @@ Super Tutor is built in three natural delivery phases. Phase 1 delivers the comp
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: URL Session Pipeline** - End-to-end session creation from URL to study page, with Agno agents, configurable provider, and progress feedback
+- [x] **Phase 1: URL Session Pipeline** - End-to-end session creation from URL to study page, with Agno agents, configurable provider, and progress feedback
 - [ ] **Phase 2: Topic Description Path** - Second ingestion branch: user provides a topic, AI researches it, same study output is produced
 - [ ] **Phase 3: Study Experience Polish** - Interactive flashcard flip animation completes the study UX
 
@@ -32,13 +32,13 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 Plans:
 - [x] 01-01-PLAN.md — Backend foundation: config, Pydantic models, model factory, personas
-- [ ] 01-02-PLAN.md — Frontend scaffold: Next.js 15, OAT UI CSS, shared TypeScript session types
-- [ ] 01-03-PLAN.md — URL extraction chain (TDD): Jina → trafilatura → Playwright with fallback and error classification
-- [ ] 01-04-PLAN.md — Agno agents + SessionWorkflow: notes, flashcard, quiz agents with progress streaming
-- [ ] 01-05-PLAN.md — FastAPI SSE endpoint: POST /sessions, GET /sessions/{id}/stream, GET /sessions/{id}
-- [ ] 01-06-PLAN.md — Landing page + create form: marketing page, tutoring mode cards, URL failure fallback
-- [ ] 01-07-PLAN.md — Loading page + study page: SSE progress bar, sidebar navigation, notes/flashcards/quiz panels
-- [ ] 01-08-PLAN.md — End-to-end verification checkpoint: human confirms all five success criteria
+- [x] 01-02-PLAN.md — Frontend scaffold: Next.js 15, OAT UI CSS, shared TypeScript session types
+- [x] 01-03-PLAN.md — URL extraction chain (TDD): Jina → trafilatura → Playwright with fallback and error classification
+- [x] 01-04-PLAN.md — Agno agents + SessionWorkflow: notes, flashcard, quiz agents with progress streaming
+- [x] 01-05-PLAN.md — FastAPI SSE endpoint: POST /sessions, GET /sessions/{id}/stream, GET /sessions/{id}
+- [x] 01-06-PLAN.md — Landing page + create form: marketing page, tutoring mode cards, URL failure fallback
+- [x] 01-07-PLAN.md — Loading page + study page: SSE progress bar, sidebar navigation, notes/flashcards/quiz panels
+- [x] 01-08-PLAN.md — End-to-end verification checkpoint: human confirms all five success criteria
 
 ### Phase 2: Topic Description Path
 **Goal**: Users can create a study session from any topic description, without needing a URL
@@ -71,6 +71,6 @@ Phases execute in numeric order: 1 → 2 → 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. URL Session Pipeline | 7/8 | In Progress|  |
+| 1. URL Session Pipeline | 8/8 | Complete | 2026-02-19 |
 | 2. Topic Description Path | 0/TBD | Not started | - |
 | 3. Study Experience Polish | 0/TBD | Not started | - |

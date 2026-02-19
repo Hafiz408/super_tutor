@@ -5,32 +5,32 @@
 See: .planning/PROJECT.md (updated 2026-02-18)
 
 **Core value:** A user gives a topic (URL or description), picks how they want to learn, and gets a complete, ready-to-study session in minutes — no account needed, no friction.
-**Current focus:** Phase 1 — URL Session Pipeline
+**Current focus:** Phase 2 — Topic Description Path
 
 ## Current Position
 
-Phase: 1 of 3 (URL Session Pipeline)
-Plan: 7 of 8 in current phase
-Status: In progress
-Last activity: 2026-02-19 — Plan 07 complete: Loading page (SSE consumer) and study page (sidebar, notes, flashcards, quiz)
+Phase: 1 of 3 COMPLETE ✅ → Phase 2 ready to plan
+Plan: 8/8 in Phase 1 (all done)
+Status: Phase 1 complete — ready for Phase 2 planning
+Last activity: 2026-02-19 — Phase 1 verified end-to-end; OpenRouter pipeline working
 
-Progress: [█████████░] 87%
+Progress: [██████████] 100% (Phase 1)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7
+- Total plans completed: 8
 - Average duration: 4min
-- Total execution time: 28min
+- Total execution time: ~38min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-url-session-pipeline | 7 | 28min | 4min |
+| 01-url-session-pipeline | 8 | ~38min | ~5min |
 
 **Recent Trend:**
-- Last 5 plans: 01-02 (4min), 01-03 (3min), 01-04 (3min), 01-05 (5min), 01-07 (4min)
+- Last 5 plans: 01-04 (3min), 01-05 (5min), 01-06 (4min), 01-07 (4min), 01-08 (10min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -57,6 +57,9 @@ Recent decisions affecting current work:
 - [01-05]: sse-starlette 3.2.0 requires fastapi>=0.115.0; upgraded from 0.104.1 to 0.129.0 to fix middleware stack ValueError
 - [Phase 01-07]: useState<string> explicit type annotation needed when initializing from as-const array element — avoids literal type inference blocking string setters
 - [Phase 01-07]: 400ms delay after SSE complete event lets user see 100% progress bar before router.push redirect
+- [Phase 01-08]: OpenRouter free models require data policy opt-in at openrouter.ai/settings/privacy
+- [Phase 01-08]: 401 "User not found" from OpenRouter = invalid/revoked API key (not a code issue)
+- [Phase 01-08]: Provider switching confirmed: only .env change + backend restart needed, zero code changes
 
 ### Pending Todos
 
@@ -64,12 +67,10 @@ None yet.
 
 ### Blockers/Concerns
 
-- [Phase 1 pre-work]: Jina AI Reader pricing and rate limits unconfirmed — verify before building the URL extraction chain (research flags this as MEDIUM confidence)
 - [Phase 2 pre-work]: Tavily pricing and rate limits unconfirmed — verify before Phase 2 planning
-- [01-01 resolved]: Tutoring mode persona specifications — written and committed in personas.py (micro_learning, teaching_a_kid, advanced)
 
 ## Session Continuity
 
 Last session: 2026-02-19
-Stopped at: Completed 01-07-PLAN.md — Loading page (SSE consumer) and study page (sidebar, notes, flashcards, quiz)
+Stopped at: Phase 1 complete — all 8 plans done, pipeline verified end-to-end
 Resume file: None
