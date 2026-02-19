@@ -1,0 +1,15 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: super_tutor-backend:latest
+    container_name: super_tutor-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      - ALLOWED_ORIGINS=http://localhost:3000
