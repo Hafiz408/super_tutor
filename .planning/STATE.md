@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 ## Current Position
 
 Phase: 1 of 3 (URL Session Pipeline)
-Plan: 2 of 8 in current phase
+Plan: 6 of 8 in current phase
 Status: In progress
-Last activity: 2026-02-19 — Plan 02 complete: Next.js frontend bootstrap with OAT UI and TypeScript types
+Last activity: 2026-02-19 — Plan 05 complete: FastAPI app with CORS, SSE session creation endpoints, and in-memory session store
 
-Progress: [██░░░░░░░░] 14%
+Progress: [████████░░] 75%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: 3min
-- Total execution time: 6min
+- Total plans completed: 6
+- Average duration: 4min
+- Total execution time: 24min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-url-session-pipeline | 2 | 6min | 3min |
+| 01-url-session-pipeline | 6 | 24min | 4min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (2min), 01-02 (4min)
-- Trend: -
+- Last 5 plans: 01-01 (2min), 01-02 (4min), 01-03 (3min), 01-04 (3min), 01-05 (5min)
+- Trend: Stable
 
 *Updated after each plan completion*
 
@@ -52,6 +52,9 @@ Recent decisions affecting current work:
 - [01-02]: OAT UI CDN URL is https://oat.ink/oat.min.css (plan had oat.css which 404s; confirmed oat.min.css returns 200)
 - [01-02]: No oat-ui npm package exists; CDN link in root layout <head> is the integration approach
 - [01-02]: .env.local is gitignored by Next.js defaults; NEXT_PUBLIC_API_URL must be created manually
+- [01-05]: Two-step SSE flow required — POST stores params, GET /stream runs pipeline (EventSource is GET-only)
+- [01-05]: asyncio.sleep(0) between workflow steps ensures SSE frame flushing step-by-step not buffered
+- [01-05]: sse-starlette 3.2.0 requires fastapi>=0.115.0; upgraded from 0.104.1 to 0.129.0 to fix middleware stack ValueError
 
 ### Pending Todos
 
@@ -66,5 +69,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-19
-Stopped at: Completed 01-02-PLAN.md — Next.js frontend bootstrap (layout, OAT UI, TypeScript session types)
+Stopped at: Completed 01-05-PLAN.md — FastAPI sessions API with SSE streaming and CORS
 Resume file: None

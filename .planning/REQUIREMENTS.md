@@ -7,11 +7,11 @@
 
 ### Session Creation
 
-- [ ] **SESS-01**: User can create a session by providing an article/doc URL and a focus prompt describing what to study
+- [x] **SESS-01**: User can create a session by providing an article/doc URL and a focus prompt describing what to study
 - [ ] **SESS-02**: User can create a session by providing a topic description (AI performs deep web research to generate source material)
 - [x] **SESS-03**: User selects a tutoring type (Micro Learning / Teaching a Kid / Advanced) before generating a session; this adapts tone and complexity of all generated content
-- [ ] **SESS-04**: If URL scraping fails (paywall, empty page, invalid URL), user is shown a specific error message and offered a paste-text fallback to continue
-- [ ] **SESS-05**: User sees step-by-step progress feedback during AI generation (e.g., "Extracting content... Generating notes... Creating flashcards... Building quiz...")
+- [x] **SESS-04**: If URL scraping fails (paywall, empty page, invalid URL), user is shown a specific error message and offered a paste-text fallback to continue
+- [x] **SESS-05**: User sees step-by-step progress feedback during AI generation (e.g., "Extracting content... Generating notes... Creating flashcards... Building quiz...")
 
 ### Content Generation
 
@@ -67,11 +67,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SESS-01 | Phase 1 | Pending |
+| SESS-01 | Phase 1 | Complete |
 | SESS-02 | Phase 2 | Pending |
 | SESS-03 | Phase 1 | Complete (01-01) |
-| SESS-04 | Phase 1 | Pending |
-| SESS-05 | Phase 1 | Pending |
+| SESS-04 | Phase 1 | Complete |
+| SESS-05 | Phase 1 | Complete |
 | GEN-01 | Phase 1 | Pending |
 | GEN-02 | Phase 1 | Pending |
 | GEN-03 | Phase 1 | Pending |
