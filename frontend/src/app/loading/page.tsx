@@ -61,7 +61,7 @@ export default function LoadingPage() {
 
   return (
     <main
-      className="flex flex-col items-center justify-center"
+      className="vstack items-center justify-center"
       style={{ minHeight: "100vh", padding: "var(--space-8)" }}
     >
       {/* Progress bar */}

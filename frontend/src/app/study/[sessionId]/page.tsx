@@ -46,7 +46,7 @@ export default function StudyPage() {
 
   if (loading) {
     return (
-      <main className="flex items-center justify-center" style={{ minHeight: "100vh" }}>
+      <main className="vstack items-center justify-center" style={{ minHeight: "100vh" }}>
         <span className="spinner" />
       </main>
     );
@@ -54,7 +54,7 @@ export default function StudyPage() {
 
   if (error || !session) {
     return (
-      <main className="flex items-center justify-center" style={{ minHeight: "100vh" }}>
+      <main className="vstack items-center justify-center" style={{ minHeight: "100vh" }}>
         <p style={{ color: "var(--muted-foreground)" }}>
           Session not found.{" "}
           <Link href="/create" style={{ color: "var(--primary)" }}>Start a new session</Link>
