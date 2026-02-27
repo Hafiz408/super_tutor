@@ -75,5 +75,5 @@ Phases execute in numeric order: 1 → 2 → 3
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. URL Session Pipeline | 8/8 | Complete | 2026-02-19 |
-| 2. Topic Description Path | 0/TBD | Not started | - |
+| 2. Topic Description Path | 2/4 | In Progress|  |
 | 3. Study Experience Polish | 0/TBD | Not started | - |

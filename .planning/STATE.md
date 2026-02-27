@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 ## Current Position
 
 Phase: 2 of 3 — In Progress
-Plan: 1/4 in Phase 2 (02-01 done)
-Status: Phase 2 active — research agent + session models complete, router next
-Last activity: 2026-02-27 — Phase 2 Plan 01 complete (research_agent.py + session.py extended)
+Plan: 3/4 in Phase 2 (02-01, 02-03 done)
+Status: Phase 2 active — research agent, session models, and frontend topic toggle complete; router integration next
+Last activity: 2026-02-28 — Phase 2 Plan 03 complete (session.ts types + create page URL/topic toggle)
 
-Progress: [███░░░░░░░] 30% (Phase 2: 1/4 plans done)
+Progress: [█████░░░░░] 50% (Phase 2: 2/4 plans done)
 
 ## Performance Metrics
 
@@ -30,14 +30,14 @@ Progress: [███░░░░░░░] 30% (Phase 2: 1/4 plans done)
 | 01-url-session-pipeline | 8 | ~38min | ~5min |
 
 **Recent Trend:**
-- Last 5 plans: 01-04 (3min), 01-05 (5min), 01-06 (4min), 01-07 (4min), 01-08 (10min), 02-01 (8min)
+- Last 5 plans: 01-05 (5min), 01-06 (4min), 01-07 (4min), 01-08 (10min), 02-01 (8min), 02-03 (2min)
 - Trend: Stable
 
 *Updated after each plan completion*
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 02-topic-description-path | 1/4 | 8min | 8min |
+| 02-topic-description-path | 2/4 | 10min | 5min |
 
 ## Accumulated Context
 
@@ -67,6 +67,8 @@ Recent decisions affecting current work:
 - [Phase 02-topic-description-path]: ddgs>=6.0.0 added to requirements.txt — agno DuckDuckGoTools imports from ddgs package directly (not duckduckgo-search)
 - [Phase 02-topic-description-path]: run_research() returns empty ResearchResult on exception — router layer checks empty content as research failure signal
 - [Phase 02-topic-description-path]: SessionType discriminator defaults to 'url' on SessionResult — existing URL sessions require zero code changes (backward compatible)
+- [Phase 02-03]: Suspense boundary required for useSearchParams in Next.js App Router — split into inner function + exported wrapper (pre-existing build failure surfaced by verification)
+- [Phase 02-03]: Topic input gated on inputMode === 'topic' && !pasteText — paste fallback supersedes topic input in error state, consistent with URL input gating
 
 ### Pending Todos
 
@@ -78,6 +80,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-27
-Stopped at: Completed 02-topic-description-path plan 01 — research_agent.py and session.py extended
+Last session: 2026-02-28
+Stopped at: Completed 02-03-PLAN.md — session.ts types extended + create page URL/topic toggle + loading page Suspense fix
 Resume file: None
