@@ -24,6 +24,6 @@ Format exactly:
 Rules:
 - Exactly 4 options per question (the options array must have exactly 4 items)
 - answer_index is the 0-based index of the correct option
-- Generate 5-8 questions covering different concepts
+- Generate 8-10 questions covering different concepts
 - Adapt vocabulary and difficulty to match your role above.""",
     )

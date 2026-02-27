@@ -175,9 +175,14 @@ function CreateForm() {
               rows={3}
               style={{ resize: "vertical" }}
             />
-            {topicDescription.length > 0 && topicDescription.length < 30 && (
+            {topicDescription.length > 0 && topicDescription.length < 10 && (
               <p className="text-xs text-red-500">
                 Please describe your topic in a bit more detail (at least a few words).
+              </p>
+            )}
+            {topicDescription.length >= 10 && topicDescription.trim().split(/\s+/).length < 3 && (
+              <p className="text-xs text-amber-600">
+                Your topic is quite broad — consider adding more detail for better results.
               </p>
             )}
           </div>
@@ -236,7 +241,7 @@ function CreateForm() {
             !selectedMode ||
             isSubmitting ||
             (pasteText.length > 0 && pasteText.length < 200) ||
-            (inputMode === "topic" && !pasteText && topicDescription.length < 30)
+            (inputMode === "topic" && !pasteText && topicDescription.length < 10)
           }
         >
           {isSubmitting ? "Starting..." : "Generate my study session →"}
