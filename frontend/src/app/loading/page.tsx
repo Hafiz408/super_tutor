@@ -1,16 +1,17 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { Suspense, useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SSE_STEPS, ProgressEvent, CompleteEvent, ErrorEvent } from "@/types/session";
 
 const PROGRESS_WEIGHTS = [10, 40, 70, 100] as const;
 
-export default function LoadingPage() {
+function LoadingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
   const tutoringType = searchParams.get("tutoring_type") ?? "";
   const focusPrompt = searchParams.get("focus_prompt") ?? "";
+  const inputMode = searchParams.get("input_mode") ?? "url";
 
   const [currentMessage, setCurrentMessage] = useState<string>(SSE_STEPS[0]);
   const [stepIndex, setStepIndex] = useState(0);
@@ -43,19 +44,19 @@ export default function LoadingPage() {
       es.close();
       try {
         const data: ErrorEvent = JSON.parse(e.data);
-        router.push(`/create?error=${data.kind}&tutoring_type=${tutoringType}&focus_prompt=${encodeURIComponent(focusPrompt)}`);
+        router.push(`/create?error=${data.kind}&tutoring_type=${tutoringType}&focus_prompt=${encodeURIComponent(focusPrompt)}&input_mode=${inputMode}`);
       } catch {
-        router.push(`/create?error=empty&tutoring_type=${tutoringType}&focus_prompt=${encodeURIComponent(focusPrompt)}`);
+        router.push(`/create?error=empty&tutoring_type=${tutoringType}&focus_prompt=${encodeURIComponent(focusPrompt)}&input_mode=${inputMode}`);
       }
     });
 
     es.onerror = () => {
       es.close();
-      router.push(`/create?error=unreachable&tutoring_type=${tutoringType}&focus_prompt=${encodeURIComponent(focusPrompt)}`);
+      router.push(`/create?error=unreachable&tutoring_type=${tutoringType}&focus_prompt=${encodeURIComponent(focusPrompt)}&input_mode=${inputMode}`);
     };
 
     return () => es.close();
-  }, [sessionId, router, tutoringType, focusPrompt]);
+  }, [sessionId, router, tutoringType, focusPrompt, inputMode]);
 
   const progressPercent = PROGRESS_WEIGHTS[Math.min(stepIndex, PROGRESS_WEIGHTS.length - 1)];
 
@@ -76,5 +77,13 @@ export default function LoadingPage() {
         <p className="text-sm text-zinc-400">This usually takes 30–60 seconds</p>
       </div>
     </main>
+  );
+}
+
+export default function LoadingPage() {
+  return (
+    <Suspense>
+      <LoadingContent />
+    </Suspense>
   );
 }

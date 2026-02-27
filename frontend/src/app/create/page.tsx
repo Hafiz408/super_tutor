@@ -1,8 +1,10 @@
 "use client";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { TutoringType, SessionRequest } from "@/types/session";
+
+type InputMode = "url" | "topic";
 
 const TUTORING_MODES: { id: TutoringType; label: string; description: string }[] = [
   { id: "micro_learning", label: "Micro Learning", description: "Short, punchy bullets. Just the essentials, fast." },
@@ -20,18 +22,21 @@ const ERROR_MESSAGES: Record<string, { top: string; pointer: string }> = {
 const inputClass =
   "w-full px-3 py-2.5 border border-zinc-200 rounded-lg bg-white text-zinc-900 text-sm placeholder:text-zinc-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-colors font-[inherit]";
 
-export default function CreatePage() {
+function CreateForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const errorParam = searchParams.get("error");
   const tutoringTypeParam = searchParams.get("tutoring_type") as TutoringType | null;
   const focusPromptParam = searchParams.get("focus_prompt") ?? "";
+  const inputModeParam = (searchParams.get("input_mode") as InputMode | null) ?? "url";
 
   const [selectedMode, setSelectedMode] = useState<TutoringType | null>(
     errorParam && tutoringTypeParam ? tutoringTypeParam : null
   );
+  const [inputMode, setInputMode] = useState<InputMode>(errorParam ? inputModeParam : "url");
   const [url, setUrl] = useState("");
+  const [topicDescription, setTopicDescription] = useState("");
   const [focusPrompt, setFocusPrompt] = useState(errorParam ? focusPromptParam : "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorKind, setErrorKind] = useState<string | null>(errorParam);
@@ -48,7 +53,11 @@ export default function CreatePage() {
     const payload: SessionRequest = {
       tutoring_type: selectedMode,
       focus_prompt: focusPrompt || undefined,
-      ...(pasteText ? { paste_text: pasteText } : { url }),
+      ...(pasteText
+        ? { paste_text: pasteText }
+        : inputMode === "topic"
+        ? { topic_description: topicDescription }
+        : { url }),
     };
 
     try {
@@ -60,10 +69,11 @@ export default function CreatePage() {
       if (!res.ok) throw new Error("Server error");
       const { session_id } = await res.json();
       router.push(
-        `/loading?session_id=${session_id}&tutoring_type=${selectedMode}&focus_prompt=${encodeURIComponent(focusPrompt)}`
+        `/loading?session_id=${session_id}&tutoring_type=${selectedMode}&focus_prompt=${encodeURIComponent(focusPrompt)}&input_mode=${inputMode}`
       );
     } catch {
       setUrl("");
+      setTopicDescription("");
       setErrorKind("empty");
       setIsSubmitting(false);
     }
@@ -110,8 +120,30 @@ export default function CreatePage() {
           </div>
         </fieldset>
 
+        {/* Input mode toggle */}
+        <div className="flex rounded-lg border border-zinc-200 overflow-hidden self-start">
+          <button
+            type="button"
+            onClick={() => { setInputMode("url"); setTopicDescription(""); }}
+            className={`px-4 py-2 text-sm font-medium transition-colors ${
+              inputMode === "url" ? "bg-zinc-900 text-white" : "bg-white text-zinc-500 hover:bg-zinc-50"
+            }`}
+          >
+            Article URL
+          </button>
+          <button
+            type="button"
+            onClick={() => { setInputMode("topic"); setUrl(""); }}
+            className={`px-4 py-2 text-sm font-medium transition-colors ${
+              inputMode === "topic" ? "bg-zinc-900 text-white" : "bg-white text-zinc-500 hover:bg-zinc-50"
+            }`}
+          >
+            Topic description
+          </button>
+        </div>
+
         {/* URL input */}
-        {!pasteText && (
+        {inputMode === "url" && !pasteText && (
           <div className="flex flex-col gap-2">
             <label htmlFor="url" className="text-sm font-medium text-zinc-900">
               Article or doc URL
@@ -123,8 +155,31 @@ export default function CreatePage() {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://..."
-              required={!pasteText}
+              required={inputMode === "url" && !pasteText}
             />
+          </div>
+        )}
+
+        {/* Topic description input */}
+        {inputMode === "topic" && !pasteText && (
+          <div className="flex flex-col gap-2">
+            <label htmlFor="topic_description" className="text-sm font-medium text-zinc-900">
+              What do you want to learn about?
+            </label>
+            <textarea
+              id="topic_description"
+              className={inputClass}
+              value={topicDescription}
+              onChange={(e) => setTopicDescription(e.target.value)}
+              placeholder="Describe a topic you want to learn about… (e.g. 'How transformer models work in NLP', 'The causes of World War I', 'Basics of Kubernetes networking')"
+              rows={3}
+              style={{ resize: "vertical" }}
+            />
+            {topicDescription.length > 0 && topicDescription.length < 30 && (
+              <p className="text-xs text-red-500">
+                Please describe your topic in a bit more detail (at least a few words).
+              </p>
+            )}
           </div>
         )}
 
@@ -177,7 +232,12 @@ export default function CreatePage() {
         <button
           type="submit"
           className="self-start px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          disabled={!selectedMode || isSubmitting || (pasteText.length > 0 && pasteText.length < 200)}
+          disabled={
+            !selectedMode ||
+            isSubmitting ||
+            (pasteText.length > 0 && pasteText.length < 200) ||
+            (inputMode === "topic" && !pasteText && topicDescription.length < 30)
+          }
         >
           {isSubmitting ? "Starting..." : "Generate my study session →"}
         </button>
@@ -192,5 +252,13 @@ export default function CreatePage() {
         </Link>
       </div>
     </main>
+  );
+}
+
+export default function CreatePage() {
+  return (
+    <Suspense>
+      <CreateForm />
+    </Suspense>
   );
 }
