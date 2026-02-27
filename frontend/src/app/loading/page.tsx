@@ -1,7 +1,7 @@
 "use client";
 import { Suspense, useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { SSE_STEPS, ProgressEvent, CompleteEvent, ErrorEvent } from "@/types/session";
+import { SSE_STEPS, TOPIC_SSE_STEPS, ProgressEvent, CompleteEvent, ErrorEvent, WarningEvent } from "@/types/session";
 
 const PROGRESS_WEIGHTS = [10, 40, 70, 100] as const;
 
@@ -13,8 +13,10 @@ function LoadingContent() {
   const focusPrompt = searchParams.get("focus_prompt") ?? "";
   const inputMode = searchParams.get("input_mode") ?? "url";
 
-  const [currentMessage, setCurrentMessage] = useState<string>(SSE_STEPS[0]);
+  const steps = inputMode === "topic" ? TOPIC_SSE_STEPS : SSE_STEPS;
+  const [currentMessage, setCurrentMessage] = useState<string>(steps[0]);
   const [stepIndex, setStepIndex] = useState(0);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
   const esRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
@@ -30,14 +32,19 @@ function LoadingContent() {
     es.addEventListener("progress", (e: MessageEvent) => {
       const data: ProgressEvent = JSON.parse(e.data);
       setCurrentMessage(data.message);
-      setStepIndex((i) => Math.min(i + 1, SSE_STEPS.length - 1));
+      setStepIndex((i) => Math.min(i + 1, steps.length - 1));
     });
 
     es.addEventListener("complete", (e: MessageEvent) => {
       const data: CompleteEvent = JSON.parse(e.data);
       es.close();
-      setStepIndex(SSE_STEPS.length - 1);
+      setStepIndex(steps.length - 1);
       setTimeout(() => router.push(`/study/${data.session_id}`), 400);
+    });
+
+    es.addEventListener("warning", (e: MessageEvent) => {
+      const data: WarningEvent = JSON.parse(e.data);
+      setWarningMessage(data.message);
     });
 
     es.addEventListener("error", (e: MessageEvent) => {
@@ -56,7 +63,7 @@ function LoadingContent() {
     };
 
     return () => es.close();
-  }, [sessionId, router, tutoringType, focusPrompt, inputMode]);
+  }, [sessionId, router, tutoringType, focusPrompt, inputMode, steps]);
 
   const progressPercent = PROGRESS_WEIGHTS[Math.min(stepIndex, PROGRESS_WEIGHTS.length - 1)];
 
@@ -75,6 +82,9 @@ function LoadingContent() {
         <span className="spinner" />
         <p className="text-base font-medium text-zinc-900">{currentMessage}</p>
         <p className="text-sm text-zinc-400">This usually takes 30–60 seconds</p>
+        {warningMessage && (
+          <p className="text-xs text-amber-600 max-w-xs text-center mt-2">{warningMessage}</p>
+        )}
       </div>
     </main>
   );
