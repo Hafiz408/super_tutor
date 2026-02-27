@@ -8,7 +8,7 @@
 ### Session Creation
 
 - [x] **SESS-01**: User can create a session by providing an article/doc URL and a focus prompt describing what to study
-- [ ] **SESS-02**: User can create a session by providing a topic description (AI performs deep web research to generate source material)
+- [x] **SESS-02**: User can create a session by providing a topic description (AI performs deep web research to generate source material)
 - [x] **SESS-03**: User selects a tutoring type (Micro Learning / Teaching a Kid / Advanced) before generating a session; this adapts tone and complexity of all generated content
 - [x] **SESS-04**: If URL scraping fails (paywall, empty page, invalid URL), user is shown a specific error message and offered a paste-text fallback to continue
 - [x] **SESS-05**: User sees step-by-step progress feedback during AI generation (e.g., "Extracting content... Generating notes... Creating flashcards... Building quiz...")
@@ -68,7 +68,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | SESS-01 | Phase 1 | Complete |
-| SESS-02 | Phase 2 | Pending |
+| SESS-02 | Phase 2 | Complete |
 | SESS-03 | Phase 1 | Complete (01-01) |
 | SESS-04 | Phase 1 | Complete |
 | SESS-05 | Phase 1 | Complete |
