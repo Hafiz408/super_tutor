@@ -4,10 +4,13 @@ from typing import Optional, List, Literal
 
 TutoringType = Literal["micro_learning", "teaching_a_kid", "advanced"]
 
+SessionType = Literal["url", "topic"]
+
 
 class SessionRequest(BaseModel):
     url: Optional[HttpUrl] = None
     paste_text: Optional[str] = None
+    topic_description: Optional[str] = None
     tutoring_type: TutoringType
     focus_prompt: Optional[str] = None
 
@@ -29,6 +32,8 @@ class SessionResult(BaseModel):
     session_id: str
     source_title: str
     tutoring_type: TutoringType
+    session_type: SessionType = "url"
+    sources: Optional[List[str]] = None
     notes: str               # markdown string
     flashcards: List[Flashcard]
     quiz: List[QuizQuestion]
