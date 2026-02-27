@@ -9,6 +9,7 @@ from sse_starlette.sse import EventSourceResponse
 from app.models.session import SessionRequest
 from app.extraction.chain import extract_content, ExtractionError
 from app.workflows.session_workflow import build_workflow
+from app.agents.research_agent import run_research
 
 router = APIRouter()
 
@@ -41,24 +42,75 @@ async def stream_session(session_id: str):
     params = PENDING_STORE.pop(session_id)
 
     async def event_generator() -> AsyncGenerator[dict, None]:
-        # Step 1: Extract content
-        yield {
-            "event": "progress",
-            "data": json.dumps({"message": "Reading the article..."}),
-        }
+        url = params.get("url") or ""
+        paste_text = params.get("paste_text") or ""
+        topic_description = params.get("topic_description") or ""
+        tutoring_type = params["tutoring_type"]
+        focus_prompt = params.get("focus_prompt") or ""
+
+        session_type = "url"
+        sources = None
+
+        # Input validation: topic too short
+        if topic_description and len(topic_description.strip()) < 10:
+            yield {
+                "event": "error",
+                "data": json.dumps({"kind": "invalid_url", "message": "Topic description is too short. Please describe what you want to learn."}),
+            }
+            return
 
         try:
-            url = params.get("url") or ""
-            paste_text = params.get("paste_text") or ""
+            if topic_description:
+                session_type = "topic"
 
-            if paste_text:
+                # Vague topic detection: fewer than 3 words
+                word_count = len(topic_description.split())
+                if word_count < 3:
+                    yield {
+                        "event": "warning",
+                        "data": json.dumps({"message": "Your topic is quite broad — we'll do our best, but the content may be general. Consider adding more detail for better results."}),
+                    }
+                    await asyncio.sleep(0)
+
+                yield {
+                    "event": "progress",
+                    "data": json.dumps({"message": "Researching your topic..."}),
+                }
+                await asyncio.sleep(0)
+
+                result = run_research(topic_description, focus_prompt)
+                content = result.content
+                sources = result.sources if result.sources else []
+
+                if not content or len(content.strip()) < 100:
+                    # Research failed or returned too little content — fall back to LLM knowledge
+                    content = f"Topic: {topic_description}\n\nFocus: {focus_prompt}" if focus_prompt else f"Topic: {topic_description}"
+                    sources = []
+                    yield {
+                        "event": "warning",
+                        "data": json.dumps({"message": "Live research was unavailable — content was generated from AI knowledge. Verify with primary sources."}),
+                    }
+                    await asyncio.sleep(0)
+
+            elif paste_text:
                 content = paste_text
             elif url:
-                content = await extract_content(str(url))
+                yield {
+                    "event": "progress",
+                    "data": json.dumps({"message": "Reading the article..."}),
+                }
+                try:
+                    content = await extract_content(str(url))
+                except ExtractionError as e:
+                    yield {
+                        "event": "error",
+                        "data": json.dumps({"kind": e.kind, "message": e.message}),
+                    }
+                    return
             else:
                 yield {
                     "event": "error",
-                    "data": json.dumps({"kind": "invalid_url", "message": "No URL or text provided"}),
+                    "data": json.dumps({"kind": "invalid_url", "message": "No URL, text, or topic provided"}),
                 }
                 return
 
@@ -70,8 +122,6 @@ async def stream_session(session_id: str):
             return
 
         # Step 2: Run the AI workflow, streaming progress events
-        tutoring_type = params["tutoring_type"]
-        focus_prompt = params.get("focus_prompt") or ""
         workflow = build_workflow(tutoring_type)
 
         try:
@@ -80,6 +130,8 @@ async def stream_session(session_id: str):
                 tutoring_type=tutoring_type,
                 focus_prompt=focus_prompt,
                 url=str(params.get("url") or ""),
+                session_type=session_type,
+                sources=sources,
             ):
                 # Check if this is the final completed response
                 event_name = getattr(response.event, "value", str(response.event)) if response.event else ""
