@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 Phase: 2 of 3 — In Progress
 Plan: 3/4 in Phase 2 (02-01, 02-03 done)
 Status: Phase 2 active — research agent, session models, and frontend topic toggle complete; router integration next
-Last activity: 2026-02-28 — Phase 2 Plan 03 complete (session.ts types + create page URL/topic toggle)
+Last activity: 2026-02-28 - Completed quick task 1: Add minimal but required logging across backend for observability
 
 Progress: [█████░░░░░] 50% (Phase 2: 2/4 plans done)
 
@@ -73,6 +73,12 @@ Recent decisions affecting current work:
 ### Pending Todos
 
 None yet.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 1 | Add minimal but required logging across backend for observability | 2026-02-27 | c6ed574 | [1-add-minimal-but-required-logging-across-](.planning/quick/1-add-minimal-but-required-logging-across-/) |
 
 ### Blockers/Concerns
 
