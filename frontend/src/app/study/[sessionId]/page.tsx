@@ -160,6 +160,37 @@ export default function StudyPage() {
         {/* Main content */}
         <main className="flex-1 px-6 py-8 max-w-3xl md:pb-8 pb-24">
 
+          {/* AI-researched disclaimer — topic sessions only */}
+          {session.session_type === "topic" && (
+            <div className="mb-6 flex flex-col gap-2 p-4 rounded-xl border border-amber-200 bg-amber-50">
+              <p className="text-xs font-medium text-amber-800">
+                AI-researched content — verify with primary sources
+              </p>
+              <p className="text-xs text-amber-700">
+                This session was generated from AI web research. The content may contain inaccuracies. Always check primary sources before relying on this material.
+              </p>
+              {session.sources && session.sources.length > 0 && (
+                <div className="flex flex-col gap-1">
+                  <p className="text-xs font-medium text-amber-800">Sources used:</p>
+                  <ul className="flex flex-col gap-0.5">
+                    {session.sources.map((src, i) => (
+                      <li key={i}>
+                        <a
+                          href={src}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-amber-700 underline hover:text-amber-900 break-all"
+                        >
+                          {src}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Notes */}
           {activeTab === "notes" && (
             <article className="prose">
