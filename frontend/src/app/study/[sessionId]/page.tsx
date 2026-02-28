@@ -605,7 +605,7 @@ export default function StudyPage() {
 
           {/* Sliding chat panel */}
           <div
-            className={`fixed top-0 right-0 h-full w-full md:w-[360px] bg-white border-l border-zinc-200 shadow-xl z-[55] flex flex-col transition-transform duration-300 ${
+            className={`fixed top-0 right-0 h-[calc(100vh-56px)] w-full md:w-[360px] bg-white border-l border-zinc-200 shadow-xl z-[55] flex flex-col transition-transform duration-300 ${
               chatOpen ? "translate-x-0" : "translate-x-full"
             }`}
             style={{ top: "56px" }}
