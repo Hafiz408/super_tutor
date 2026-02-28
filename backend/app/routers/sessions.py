@@ -151,7 +151,7 @@ async def stream_session(session_id: str):
         workflow = build_workflow(tutoring_type)
 
         try:
-            for response in workflow.run(
+            async for response in workflow.run(
                 content=content,
                 tutoring_type=tutoring_type,
                 focus_prompt=focus_prompt,
