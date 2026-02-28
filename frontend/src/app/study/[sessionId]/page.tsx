@@ -49,9 +49,10 @@ export default function StudyPage() {
   const [quizPhase, setQuizPhase] = useState<"answering" | "reviewing">("answering");
   const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set());
 
-  const [retryingFlashcards, setRetryingFlashcards] = useState(false);
-  const [retryingQuiz, setRetryingQuiz] = useState(false);
-  const [retryToast, setRetryToast] = useState<string | null>(null);
+  const [generatingFlashcards, setGeneratingFlashcards] = useState(false);
+  const [generatingQuiz, setGeneratingQuiz] = useState(false);
+  const [flashcardError, setFlashcardError] = useState<string | null>(null);
+  const [quizError, setQuizError] = useState<string | null>(null);
 
   const { saveSession, evictionToast } = useRecentSessions();
 
@@ -64,95 +65,82 @@ export default function StudyPage() {
     });
   }
 
+  // Load session from localStorage
   useEffect(() => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    fetch(`${apiUrl}/sessions/${sessionId}`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Session not found");
-        return res.json();
-      })
-      .then((data: SessionResult) => {
-        setSession(data);
-        setAnswers(new Array(data.quiz.length).fill(null));
-        saveSession({
-          session_id: data.session_id,
-          source_title: data.source_title,
-          tutoring_type: data.tutoring_type,
-          session_type: data.session_type ?? "url",
-        });
-        setLoading(false);
-      })
-      .catch((e) => {
-        setError(e.message);
-        setLoading(false);
-      });
+    const stored = localStorage.getItem(`session:${sessionId}`);
+    if (!stored) {
+      setError("Session not found on this device.");
+      setLoading(false);
+      return;
+    }
+    const data: SessionResult = JSON.parse(stored);
+    setSession(data);
+    setAnswers(new Array(data.quiz.length).fill(null));
+    saveSession({
+      session_id: data.session_id,
+      source_title: data.source_title,
+      tutoring_type: data.tutoring_type,
+      session_type: data.session_type ?? "url",
+    });
+    setLoading(false);
   }, [sessionId]);
 
-  if (loading) {
-    return (
-      <main className="flex items-center justify-center min-h-[80vh]">
-        <span className="spinner" />
-      </main>
-    );
+  // Persist a partial update back to localStorage and state
+  function updateSession(patch: Partial<SessionResult>) {
+    setSession((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, ...patch };
+      localStorage.setItem(`session:${sessionId}`, JSON.stringify(updated));
+      return updated;
+    });
   }
 
-  if (error || !session) {
-    return (
-      <main className="flex items-center justify-center min-h-[80vh]">
-        <p className="text-zinc-500 text-sm">
-          Session not found.{" "}
-          <Link href="/create" className="text-blue-600 hover:underline">
-            Start a new session
-          </Link>
-        </p>
-      </main>
-    );
-  }
-
-  async function retryFlashcards() {
-    if (!session || retryingFlashcards) return;
-    setRetryingFlashcards(true);
+  async function generateFlashcards() {
+    if (!session || generatingFlashcards) return;
+    setFlashcardError(null);
+    setGeneratingFlashcards(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      const res = await fetch(`${apiUrl}/sessions/${sessionId}/regenerate/flashcards`, { method: "POST" });
-      if (!res.ok) throw new Error("Regeneration failed");
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/sessions/${sessionId}/regenerate/flashcards`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ notes: session.notes, tutoring_type: session.tutoring_type }),
+        }
+      );
+      if (!res.ok) throw new Error("Generation failed");
       const data = await res.json();
-      setSession((prev) => {
-        if (!prev) return prev;
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { flashcards: _fc, ...restErrors } = prev.errors ?? {};
-        return { ...prev, flashcards: data.flashcards, errors: restErrors };
-      });
-      setRetryToast("Flashcards ready!");
-      setTimeout(() => setRetryToast(null), 3000);
+      updateSession({ flashcards: data.flashcards });
     } catch {
-      // Keep error state — retry button stays visible
+      setFlashcardError("Failed to generate flashcards. Please try again.");
     } finally {
-      setRetryingFlashcards(false);
+      setGeneratingFlashcards(false);
     }
   }
 
-  async function retryQuiz() {
-    if (!session || retryingQuiz) return;
-    setRetryingQuiz(true);
+  async function generateQuiz() {
+    if (!session || generatingQuiz) return;
+    setQuizError(null);
+    setGeneratingQuiz(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      const res = await fetch(`${apiUrl}/sessions/${sessionId}/regenerate/quiz`, { method: "POST" });
-      if (!res.ok) throw new Error("Regeneration failed");
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/sessions/${sessionId}/regenerate/quiz`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ notes: session.notes, tutoring_type: session.tutoring_type }),
+        }
+      );
+      if (!res.ok) throw new Error("Generation failed");
       const data = await res.json();
-      setSession((prev) => {
-        if (!prev) return prev;
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { quiz: _q, ...restErrors } = prev.errors ?? {};
-        return { ...prev, quiz: data.quiz, errors: restErrors };
-      });
+      updateSession({ quiz: data.quiz });
       setAnswers(new Array(data.quiz.length).fill(null));
-      setRetryToast("Quiz ready!");
-      setTimeout(() => setRetryToast(null), 3000);
+      setQuizPhase("answering");
+      setCurrentQ(0);
     } catch {
-      // Keep error state — retry button stays visible
+      setQuizError("Failed to generate quiz. Please try again.");
     } finally {
-      setRetryingQuiz(false);
+      setGeneratingQuiz(false);
     }
   }
 
@@ -171,16 +159,31 @@ export default function StudyPage() {
     }
   }
 
+  if (loading) {
+    return (
+      <main className="flex items-center justify-center min-h-[80vh]">
+        <span className="spinner" />
+      </main>
+    );
+  }
+
+  if (error || !session) {
+    return (
+      <main className="flex items-center justify-center min-h-[80vh]">
+        <p className="text-zinc-500 text-sm">
+          {error ?? "Session not found."}{" "}
+          <Link href="/create" className="text-blue-600 hover:underline">
+            Start a new session
+          </Link>
+        </p>
+      </main>
+    );
+  }
+
   const correctCount = answers.filter((a, i) => a === session!.quiz[i]?.answer_index).length;
 
   return (
     <div className="flex" style={{ minHeight: "calc(100vh - 56px)" }}>
-      {retryToast && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-zinc-900 text-white text-xs px-4 py-2.5 rounded-lg shadow-lg toast-slide-up">
-          {retryToast}
-        </div>
-      )}
-
       {evictionToast && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-zinc-900 text-white text-xs px-4 py-2.5 rounded-lg shadow-lg toast-slide-up">
           Your oldest session was removed to make space
@@ -279,29 +282,12 @@ export default function StudyPage() {
             </article>
           )}
 
-          {/* Flashcards */}
+          {/* Flashcards — 4 states: content / generating / error / empty */}
           {activeTab === "flashcards" && (
             <div>
               <h2 className="text-xl font-semibold text-zinc-900 mb-6">Flashcards</h2>
-              {session.errors?.flashcards ? (
-                retryingFlashcards ? (
-                  <div className="flex items-center gap-3 p-4 rounded-xl border border-zinc-200 bg-zinc-50">
-                    <span className="spinner" style={{ width: 20, height: 20 }} />
-                    <p className="text-sm text-zinc-500">Generating flashcards...</p>
-                  </div>
-                ) : (
-                  <div className="p-4 rounded-xl border border-red-200 bg-red-50 flex flex-col gap-3">
-                    <p className="text-sm font-medium text-red-700">Flashcards unavailable</p>
-                    <p className="text-xs text-red-600">{session.errors.flashcards}</p>
-                    <button
-                      onClick={retryFlashcards}
-                      className="self-start text-xs font-medium text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-colors"
-                    >
-                      Retry
-                    </button>
-                  </div>
-                )
-              ) : (
+
+              {session.flashcards.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {session.flashcards.map((card, i) => (
                     <div
@@ -331,128 +317,164 @@ export default function StudyPage() {
                     </div>
                   ))}
                 </div>
+              ) : generatingFlashcards ? (
+                <div className="flex items-center gap-3 p-4 rounded-xl border border-zinc-200 bg-zinc-50">
+                  <span className="spinner" style={{ width: 20, height: 20 }} />
+                  <p className="text-sm text-zinc-500">Generating flashcards...</p>
+                </div>
+              ) : flashcardError ? (
+                <div className="p-4 rounded-xl border border-red-200 bg-red-50 flex flex-col gap-3">
+                  <p className="text-sm font-medium text-red-700">Generation failed</p>
+                  <p className="text-xs text-red-600">{flashcardError}</p>
+                  <button
+                    onClick={generateFlashcards}
+                    className="self-start text-xs font-medium text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    Try again
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-4 py-16 text-center">
+                  <p className="text-sm text-zinc-400">Flashcards haven&apos;t been generated yet.</p>
+                  <button
+                    onClick={generateFlashcards}
+                    className="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors"
+                  >
+                    Generate Flashcards
+                  </button>
+                </div>
               )}
             </div>
           )}
 
-          {/* Quiz */}
+          {/* Quiz — 4 states: content / generating / error / empty */}
           {activeTab === "quiz" && (
             <div>
               <h2 className="text-xl font-semibold text-zinc-900 mb-6">Quiz</h2>
 
-              {session.errors?.quiz && (
-                retryingQuiz ? (
-                  <div className="flex items-center gap-3 p-4 rounded-xl border border-zinc-200 bg-zinc-50 mb-4">
-                    <span className="spinner" style={{ width: 20, height: 20 }} />
-                    <p className="text-sm text-zinc-500">Generating quiz...</p>
-                  </div>
-                ) : (
-                  <div className="p-4 rounded-xl border border-red-200 bg-red-50 mb-4 flex flex-col gap-3">
-                    <p className="text-sm font-medium text-red-700">Quiz unavailable</p>
-                    <p className="text-xs text-red-600">{session.errors.quiz}</p>
-                    <button
-                      onClick={retryQuiz}
-                      className="self-start text-xs font-medium text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-colors"
-                    >
-                      Retry
-                    </button>
-                  </div>
-                )
-              )}
+              {session.quiz.length > 0 ? (
+                <>
+                  {quizPhase === "answering" && session.quiz[currentQ] && (
+                    <div className="flex flex-col gap-4">
+                      <p className="text-xs text-zinc-400">
+                        Question {currentQ + 1} of {session.quiz.length}
+                      </p>
+                      <p className="text-base font-semibold text-zinc-900">
+                        {session.quiz[currentQ].question}
+                      </p>
 
-              {!session.errors?.quiz && quizPhase === "answering" && session.quiz[currentQ] && (
-                <div className="flex flex-col gap-4">
-                  <p className="text-xs text-zinc-400">
-                    Question {currentQ + 1} of {session.quiz.length}
-                  </p>
-                  <p className="text-base font-semibold text-zinc-900">
-                    {session.quiz[currentQ].question}
-                  </p>
+                      <div className="flex flex-col gap-2">
+                        {session.quiz[currentQ].options.map((option, i) => {
+                          const answered = answers[currentQ] !== null;
+                          const isSelected = answers[currentQ] === i;
+                          const isCorrect = i === session.quiz[currentQ].answer_index;
 
-                  <div className="flex flex-col gap-2">
-                    {session.quiz[currentQ].options.map((option, i) => {
-                      const answered = answers[currentQ] !== null;
-                      const isSelected = answers[currentQ] === i;
-                      const isCorrect = i === session.quiz[currentQ].answer_index;
+                          let stateClass = "border-zinc-200 bg-white hover:border-zinc-400 hover:bg-zinc-50";
+                          if (answered && isCorrect) stateClass = "border-green-500 bg-green-50";
+                          else if (answered && isSelected) stateClass = "border-red-400 bg-red-50";
 
-                      let stateClass = "border-zinc-200 bg-white hover:border-zinc-400 hover:bg-zinc-50";
-                      if (answered && isCorrect) stateClass = "border-green-500 bg-green-50";
-                      else if (answered && isSelected) stateClass = "border-red-400 bg-red-50";
+                          return (
+                            <button
+                              key={i}
+                              onClick={() => selectAnswer(i)}
+                              disabled={answered}
+                              className={`block w-full text-left px-4 py-3 border rounded-xl text-sm text-zinc-900 transition-colors disabled:cursor-default ${stateClass}`}
+                            >
+                              {option}
+                              {answered && isCorrect && (
+                                <span className="ml-2 text-green-600">✓</span>
+                              )}
+                              {answered && isSelected && !isCorrect && (
+                                <span className="ml-2 text-red-500">✗</span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
 
-                      return (
+                      {answers[currentQ] !== null && (
                         <button
-                          key={i}
-                          onClick={() => selectAnswer(i)}
-                          disabled={answered}
-                          className={`block w-full text-left px-4 py-3 border rounded-xl text-sm text-zinc-900 transition-colors disabled:cursor-default ${stateClass}`}
+                          onClick={nextQuestion}
+                          className="self-start text-sm text-zinc-500 hover:text-zinc-900 px-3 py-1.5 rounded-lg hover:bg-zinc-100 transition-colors"
                         >
-                          {option}
-                          {answered && isCorrect && (
-                            <span className="ml-2 text-green-600">✓</span>
-                          )}
-                          {answered && isSelected && !isCorrect && (
-                            <span className="ml-2 text-red-500">✗</span>
-                          )}
+                          {currentQ < session.quiz.length - 1 ? "Next question →" : "See results →"}
                         </button>
-                      );
-                    })}
-                  </div>
-
-                  {answers[currentQ] !== null && (
-                    <button
-                      onClick={nextQuestion}
-                      className="self-start text-sm text-zinc-500 hover:text-zinc-900 px-3 py-1.5 rounded-lg hover:bg-zinc-100 transition-colors"
-                    >
-                      {currentQ < session.quiz.length - 1 ? "Next question →" : "See results →"}
-                    </button>
+                      )}
+                    </div>
                   )}
+
+                  {quizPhase === "reviewing" && (
+                    <div className="flex flex-col gap-6">
+                      <div>
+                        <h3 className="text-2xl font-bold text-zinc-900">
+                          You scored {correctCount} / {session.quiz.length}
+                        </h3>
+                        <p className="text-sm text-zinc-500 mt-1">Review your answers below.</p>
+                      </div>
+
+                      <div className="flex flex-col gap-3">
+                        {session.quiz.map((q, i) => {
+                          const userAnswer = answers[i];
+                          const correct = userAnswer === q.answer_index;
+                          return (
+                            <article
+                              key={i}
+                              className="border border-zinc-200 rounded-xl p-4"
+                              style={{ borderLeft: `4px solid ${correct ? "#4ade80" : "#f87171"}` }}
+                            >
+                              <p className="font-semibold text-zinc-900 text-sm mb-2">
+                                {i + 1}. {q.question}
+                              </p>
+                              <p className="text-xs text-green-700">
+                                ✓ {q.options[q.answer_index]}
+                              </p>
+                              {!correct && userAnswer !== null && (
+                                <p className="text-xs text-red-600 mt-0.5">
+                                  ✗ Your answer: {q.options[userAnswer]}
+                                </p>
+                              )}
+                            </article>
+                          );
+                        })}
+                      </div>
+
+                      <button
+                        className="self-start text-sm text-zinc-500 hover:text-zinc-900 px-3 py-1.5 rounded-lg hover:bg-zinc-100 transition-colors"
+                        onClick={() => {
+                          setCurrentQ(0);
+                          setAnswers(new Array(session!.quiz.length).fill(null));
+                          setQuizPhase("answering");
+                        }}
+                      >
+                        Retake quiz
+                      </button>
+                    </div>
+                  )}
+                </>
+              ) : generatingQuiz ? (
+                <div className="flex items-center gap-3 p-4 rounded-xl border border-zinc-200 bg-zinc-50">
+                  <span className="spinner" style={{ width: 20, height: 20 }} />
+                  <p className="text-sm text-zinc-500">Generating quiz...</p>
                 </div>
-              )}
-
-              {!session.errors?.quiz && quizPhase === "reviewing" && (
-                <div className="flex flex-col gap-6">
-                  <div>
-                    <h3 className="text-2xl font-bold text-zinc-900">
-                      You scored {correctCount} / {session.quiz.length}
-                    </h3>
-                    <p className="text-sm text-zinc-500 mt-1">Review your answers below.</p>
-                  </div>
-
-                  <div className="flex flex-col gap-3">
-                    {session.quiz.map((q, i) => {
-                      const userAnswer = answers[i];
-                      const correct = userAnswer === q.answer_index;
-                      return (
-                        <article
-                          key={i}
-                          className="border border-zinc-200 rounded-xl p-4"
-                          style={{ borderLeft: `4px solid ${correct ? "#4ade80" : "#f87171"}` }}
-                        >
-                          <p className="font-semibold text-zinc-900 text-sm mb-2">
-                            {i + 1}. {q.question}
-                          </p>
-                          <p className="text-xs text-green-700">
-                            ✓ {q.options[q.answer_index]}
-                          </p>
-                          {!correct && userAnswer !== null && (
-                            <p className="text-xs text-red-600 mt-0.5">
-                              ✗ Your answer: {q.options[userAnswer]}
-                            </p>
-                          )}
-                        </article>
-                      );
-                    })}
-                  </div>
-
+              ) : quizError ? (
+                <div className="p-4 rounded-xl border border-red-200 bg-red-50 flex flex-col gap-3">
+                  <p className="text-sm font-medium text-red-700">Generation failed</p>
+                  <p className="text-xs text-red-600">{quizError}</p>
                   <button
-                    className="self-start text-sm text-zinc-500 hover:text-zinc-900 px-3 py-1.5 rounded-lg hover:bg-zinc-100 transition-colors"
-                    onClick={() => {
-                      setCurrentQ(0);
-                      setAnswers(new Array(session!.quiz.length).fill(null));
-                      setQuizPhase("answering");
-                    }}
+                    onClick={generateQuiz}
+                    className="self-start text-xs font-medium text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-colors"
                   >
-                    Retake quiz
+                    Try again
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-4 py-16 text-center">
+                  <p className="text-sm text-zinc-400">Quiz hasn&apos;t been generated yet.</p>
+                  <button
+                    onClick={generateQuiz}
+                    className="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors"
+                  >
+                    Generate Quiz
                   </button>
                 </div>
               )}

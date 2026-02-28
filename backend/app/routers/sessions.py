@@ -5,6 +5,7 @@ import uuid
 from typing import AsyncGenerator
 
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
 from app.models.session import SessionRequest
@@ -18,10 +19,14 @@ logger = logging.getLogger("super_tutor.sessions")
 
 router = APIRouter()
 
-# In-memory session storage: session_id -> dict with pending params or completed SessionResult
-# Phase 1 only — no database, ephemeral per server restart
+# In-memory store for pending (not-yet-streamed) session params only.
+# Completed session data is sent in full via the SSE complete event and stored client-side.
 PENDING_STORE: dict[str, dict] = {}   # session_id -> raw request params
-SESSION_STORE: dict[str, dict] = {}   # session_id -> completed session data
+
+
+class RegenerateRequest(BaseModel):
+    notes: str
+    tutoring_type: str
 
 
 @router.post("")
@@ -167,16 +172,11 @@ async def stream_session(session_id: str):
                 is_complete = "completed" in event_name or isinstance(response.content, dict)
 
                 if is_complete and isinstance(response.content, dict):
-                    # Store the full session result
-                    session_data = {
-                        "session_id": session_id,
-                        **response.content,
-                    }
-                    SESSION_STORE[session_id] = session_data
+                    session_data = {"session_id": session_id, **response.content}
                     logger.info("Stream complete — session_id=%s", session_id)
                     yield {
                         "event": "complete",
-                        "data": json.dumps({"session_id": session_id}),
+                        "data": json.dumps(session_data),
                     }
                 elif isinstance(response.content, str):
                     # Progress message
@@ -198,50 +198,29 @@ async def stream_session(session_id: str):
     return EventSourceResponse(event_generator())
 
 
-@router.get("/{session_id}")
-async def get_session(session_id: str):
-    """Returns the completed session data. Called after stream completes."""
-    if session_id not in SESSION_STORE:
-        raise HTTPException(status_code=404, detail="Session not found or not yet complete")
-    return SESSION_STORE[session_id]
-
-
 @router.post("/{session_id}/regenerate/{section}")
-async def regenerate_section(session_id: str, section: str):
-    """Re-runs a single failed agent (flashcards or quiz) using the stored notes."""
-    if session_id not in SESSION_STORE:
-        raise HTTPException(status_code=404, detail="Session not found")
+async def regenerate_section(session_id: str, section: str, body: RegenerateRequest):
+    """Generates flashcards or quiz on demand using notes + tutoring_type from the client."""
     if section not in ("flashcards", "quiz"):
         raise HTTPException(status_code=400, detail="section must be 'flashcards' or 'quiz'")
 
-    session = SESSION_STORE[session_id]
-    notes = session.get("notes", "")
-    tutoring_type = session.get("tutoring_type", "micro_learning")
-    input_text = f"Content:\n{notes}"
+    input_text = f"Content:\n{body.notes}"
 
-    logger.info("Regenerating %s — session_id=%s", section, session_id)
+    logger.info("Generating %s — session_id=%s tutoring_type=%s", section, session_id, body.tutoring_type)
 
     if section == "flashcards":
-        agent = build_flashcard_agent(tutoring_type)
+        agent = build_flashcard_agent(body.tutoring_type)
         result = await asyncio.to_thread(agent.run, input_text)
         new_items = _parse_json_safe(result.content or "[]", [])
         if not new_items:
-            raise HTTPException(status_code=500, detail="Regeneration returned empty response")
-        updated = {**session, "flashcards": new_items}
-        errors = {k: v for k, v in (session.get("errors") or {}).items() if k != "flashcards"}
-        updated["errors"] = errors if errors else None
-        SESSION_STORE[session_id] = updated
-        logger.info("Regeneration complete — session_id=%s section=flashcards count=%d", session_id, len(new_items))
+            raise HTTPException(status_code=500, detail="Generation returned empty response")
+        logger.info("Generation complete — session_id=%s section=flashcards count=%d", session_id, len(new_items))
         return {"flashcards": new_items}
     else:
-        agent = build_quiz_agent(tutoring_type)
+        agent = build_quiz_agent(body.tutoring_type)
         result = await asyncio.to_thread(agent.run, input_text)
         new_items = _parse_json_safe(result.content or "[]", [])
         if not new_items:
-            raise HTTPException(status_code=500, detail="Regeneration returned empty response")
-        updated = {**session, "quiz": new_items}
-        errors = {k: v for k, v in (session.get("errors") or {}).items() if k != "quiz"}
-        updated["errors"] = errors if errors else None
-        SESSION_STORE[session_id] = updated
-        logger.info("Regeneration complete — session_id=%s section=quiz count=%d", session_id, len(new_items))
+            raise HTTPException(status_code=500, detail="Generation returned empty response")
+        logger.info("Generation complete — session_id=%s section=quiz count=%d", session_id, len(new_items))
         return {"quiz": new_items}

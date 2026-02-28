@@ -38,9 +38,8 @@ export interface ProgressEvent {
   message: string;
 }
 
-export interface CompleteEvent {
-  session_id: string;
-}
+// CompleteEvent is now the full session payload — the backend sends all data in one shot.
+export type CompleteEvent = SessionResult;
 
 export interface ErrorEvent {
   kind: "paywall" | "invalid_url" | "empty" | "unreachable";
@@ -49,15 +48,11 @@ export interface ErrorEvent {
 export const SSE_STEPS = [
   "Reading the article...",
   "Crafting your notes...",
-  "Making your flashcards...",
-  "Building your quiz...",
 ] as const;
 
 export const TOPIC_SSE_STEPS = [
   "Researching your topic...",
   "Crafting your notes...",
-  "Making your flashcards...",
-  "Building your quiz...",
 ] as const;
 
 export interface WarningEvent {

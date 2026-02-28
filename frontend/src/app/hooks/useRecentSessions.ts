@@ -16,7 +16,9 @@ function readFromStorage(): StoredSession[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const all: StoredSession[] = raw ? JSON.parse(raw) : [];
+    // Only return sessions whose full data still exists in localStorage
+    return all.filter((s) => localStorage.getItem(`session:${s.session_id}`) !== null);
   } catch {
     return [];
   }

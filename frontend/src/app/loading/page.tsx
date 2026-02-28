@@ -3,7 +3,7 @@ import { Suspense, useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SSE_STEPS, TOPIC_SSE_STEPS, ProgressEvent, CompleteEvent, ErrorEvent, WarningEvent } from "@/types/session";
 
-const PROGRESS_WEIGHTS = [10, 40, 70, 100] as const;
+const PROGRESS_WEIGHTS = [20, 100] as const;
 
 function LoadingContent() {
   const router = useRouter();
@@ -37,6 +37,7 @@ function LoadingContent() {
 
     es.addEventListener("complete", (e: MessageEvent) => {
       const data: CompleteEvent = JSON.parse(e.data);
+      localStorage.setItem(`session:${data.session_id}`, JSON.stringify(data));
       es.close();
       setStepIndex(steps.length - 1);
       setTimeout(() => router.push(`/study/${data.session_id}`), 400);
