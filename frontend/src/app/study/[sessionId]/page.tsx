@@ -49,6 +49,10 @@ export default function StudyPage() {
   const [quizPhase, setQuizPhase] = useState<"answering" | "reviewing">("answering");
   const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set());
 
+  const [retryingFlashcards, setRetryingFlashcards] = useState(false);
+  const [retryingQuiz, setRetryingQuiz] = useState(false);
+  const [retryToast, setRetryToast] = useState<string | null>(null);
+
   const { saveSession, evictionToast } = useRecentSessions();
 
   function toggleFlip(index: number) {
@@ -105,6 +109,61 @@ export default function StudyPage() {
     );
   }
 
+  async function retryFlashcards() {
+    if (!session || retryingFlashcards) return;
+    setRetryingFlashcards(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      const res = await fetch(`${apiUrl}/sessions/${sessionId}`);
+      if (!res.ok) throw new Error("Session not found");
+      const refreshed = await res.json();
+      if (refreshed.flashcards && refreshed.flashcards.length > 0) {
+        setSession((prev) => {
+          if (!prev) return prev;
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { flashcards: _fc, ...restErrors } = prev.errors ?? {};
+          return { ...prev, flashcards: refreshed.flashcards, errors: restErrors };
+        });
+        setRetryToast("Flashcards ready!");
+        setTimeout(() => setRetryToast(null), 3000);
+      } else {
+        throw new Error("Still empty");
+      }
+    } catch {
+      // Keep error state — retry button stays visible
+    } finally {
+      setRetryingFlashcards(false);
+    }
+  }
+
+  async function retryQuiz() {
+    if (!session || retryingQuiz) return;
+    setRetryingQuiz(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      const res = await fetch(`${apiUrl}/sessions/${sessionId}`);
+      if (!res.ok) throw new Error("Session not found");
+      const refreshed = await res.json();
+      if (refreshed.quiz && refreshed.quiz.length > 0) {
+        setSession((prev) => {
+          if (!prev) return prev;
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { quiz: _q, ...restErrors } = prev.errors ?? {};
+          return { ...prev, quiz: refreshed.quiz, errors: restErrors };
+        });
+        setAnswers(new Array(refreshed.quiz.length).fill(null));
+        setRetryToast("Quiz ready!");
+        setTimeout(() => setRetryToast(null), 3000);
+      } else {
+        throw new Error("Still empty");
+      }
+    } catch {
+      // Keep error state — retry button stays visible
+    } finally {
+      setRetryingQuiz(false);
+    }
+  }
+
   function selectAnswer(optionIndex: number) {
     if (answers[currentQ] !== null) return;
     const next = [...answers];
@@ -124,8 +183,14 @@ export default function StudyPage() {
 
   return (
     <div className="flex" style={{ minHeight: "calc(100vh - 56px)" }}>
+      {retryToast && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-zinc-900 text-white text-xs px-4 py-2.5 rounded-lg shadow-lg toast-slide-up">
+          {retryToast}
+        </div>
+      )}
+
       {evictionToast && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-zinc-900 text-white text-xs px-4 py-2.5 rounded-lg shadow-lg">
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-zinc-900 text-white text-xs px-4 py-2.5 rounded-lg shadow-lg toast-slide-up">
           Your oldest session was removed to make space
         </div>
       )}
@@ -227,10 +292,23 @@ export default function StudyPage() {
             <div>
               <h2 className="text-xl font-semibold text-zinc-900 mb-6">Flashcards</h2>
               {session.errors?.flashcards ? (
-                <div className="p-4 rounded-xl border border-red-200 bg-red-50">
-                  <p className="text-sm font-medium text-red-700 mb-1">Flashcards unavailable</p>
-                  <p className="text-xs text-red-600">{session.errors.flashcards}</p>
-                </div>
+                retryingFlashcards ? (
+                  <div className="flex items-center gap-3 p-4 rounded-xl border border-zinc-200 bg-zinc-50">
+                    <span className="spinner" style={{ width: 20, height: 20 }} />
+                    <p className="text-sm text-zinc-500">Generating flashcards...</p>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-xl border border-red-200 bg-red-50 flex flex-col gap-3">
+                    <p className="text-sm font-medium text-red-700">Flashcards unavailable</p>
+                    <p className="text-xs text-red-600">{session.errors.flashcards}</p>
+                    <button
+                      onClick={retryFlashcards}
+                      className="self-start text-xs font-medium text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {session.flashcards.map((card, i) => (
@@ -271,10 +349,23 @@ export default function StudyPage() {
               <h2 className="text-xl font-semibold text-zinc-900 mb-6">Quiz</h2>
 
               {session.errors?.quiz && (
-                <div className="p-4 rounded-xl border border-red-200 bg-red-50 mb-4">
-                  <p className="text-sm font-medium text-red-700 mb-1">Quiz unavailable</p>
-                  <p className="text-xs text-red-600">{session.errors.quiz}</p>
-                </div>
+                retryingQuiz ? (
+                  <div className="flex items-center gap-3 p-4 rounded-xl border border-zinc-200 bg-zinc-50 mb-4">
+                    <span className="spinner" style={{ width: 20, height: 20 }} />
+                    <p className="text-sm text-zinc-500">Generating quiz...</p>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-xl border border-red-200 bg-red-50 mb-4 flex flex-col gap-3">
+                    <p className="text-sm font-medium text-red-700">Quiz unavailable</p>
+                    <p className="text-xs text-red-600">{session.errors.quiz}</p>
+                    <button
+                      onClick={retryQuiz}
+                      className="self-start text-xs font-medium text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )
               )}
 
               {!session.errors?.quiz && quizPhase === "answering" && session.quiz[currentQ] && (
