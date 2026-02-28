@@ -42,8 +42,8 @@ def _extract_title(content: str, url: str = "") -> str:
     return url[:80] if url else "Untitled"
 
 
-def _generate_title(text: str) -> str:
-    """Ask the AI for a concise 3-5 word title. Falls back to _extract_title on failure."""
+def _generate_title(text: str, fallback: str = "") -> str:
+    """Ask the AI for a concise 3-5 word title. Falls back to fallback (truncated) or _extract_title on failure."""
     agent = Agent(
         model=get_model(),
         instructions=(
@@ -59,7 +59,9 @@ def _generate_title(text: str) -> str:
             logger.debug("Title generation done — title=%r", title)
             return title[:80]
     except Exception:
-        logger.warning("Title generation failed, falling back to extract_title")
+        logger.warning("Title generation failed, falling back to user input or extract_title")
+    if fallback:
+        return fallback[:80]
     return _extract_title(text)
 
 
