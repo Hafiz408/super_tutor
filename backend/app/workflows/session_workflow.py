@@ -9,12 +9,13 @@ assumed. To avoid the API mismatch, SessionWorkflow is a plain Python class that
 inherit from agno.workflow.Workflow. The run() generator interface is preserved exactly as
 the SSE endpoint (01-05) expects: yields objects with .content and .event attributes.
 """
+import asyncio
 import json
 import logging
 import re
 import time
 from dataclasses import dataclass, field
-from typing import Iterator, Any
+from typing import AsyncIterator, Any
 
 from agno.agent import Agent
 from app.agents.model_factory import get_model
@@ -76,7 +77,8 @@ def _parse_json_safe(raw: str, fallback: list) -> list:
 class SessionWorkflow:
     """
     Orchestrates notes, flashcard, and quiz agents.
-    run() is a synchronous generator — the SSE endpoint wraps it in async with asyncio.sleep(0).
+    run() is an async generator — each blocking agent.run() call is offloaded to the
+    thread pool via asyncio.to_thread so the event loop stays unblocked between SSE yields.
     """
 
     def __init__(self, tutoring_type: str):
@@ -85,7 +87,7 @@ class SessionWorkflow:
         self.flashcard_agent = build_flashcard_agent(tutoring_type)
         self.quiz_agent = build_quiz_agent(tutoring_type)
 
-    def run(
+    async def run(
         self,
         content: str,
         tutoring_type: str,
@@ -94,7 +96,7 @@ class SessionWorkflow:
         session_type: str = "url",
         sources: list | None = None,
         title_input: str = "",
-    ) -> Iterator[RunResponse]:
+    ) -> AsyncIterator[RunResponse]:
         input_text = (
             f"Content:\n{content}\n\nFocus on: {focus_prompt}"
             if focus_prompt
@@ -108,7 +110,7 @@ class SessionWorkflow:
         yield RunResponse(content="Crafting your notes...")
         logger.info("Workflow step start — step=notes tutoring_type=%s", tutoring_type)
         _t = time.perf_counter()
-        notes_result = self.notes_agent.run(input_text)
+        notes_result = await asyncio.to_thread(self.notes_agent.run, input_text)
         logger.info("Workflow step done — step=notes elapsed=%.2fs", time.perf_counter() - _t)
         notes = notes_result.content or ""
         if len(notes.strip()) < 100:
@@ -121,7 +123,7 @@ class SessionWorkflow:
         logger.info("Workflow step start — step=flashcards")
         _t = time.perf_counter()
         try:
-            flashcard_result = self.flashcard_agent.run(input_text)
+            flashcard_result = await asyncio.to_thread(self.flashcard_agent.run, input_text)
             logger.info("Workflow step done — step=flashcards elapsed=%.2fs", time.perf_counter() - _t)
             flashcards_raw = flashcard_result.content or "[]"
             flashcards = _parse_json_safe(flashcards_raw, [])
@@ -137,7 +139,7 @@ class SessionWorkflow:
         logger.info("Workflow step start — step=quiz")
         _t = time.perf_counter()
         try:
-            quiz_result = self.quiz_agent.run(input_text)
+            quiz_result = await asyncio.to_thread(self.quiz_agent.run, input_text)
             logger.info("Workflow step done — step=quiz elapsed=%.2fs", time.perf_counter() - _t)
             quiz_raw = quiz_result.content or "[]"
             quiz = _parse_json_safe(quiz_raw, [])
@@ -148,8 +150,9 @@ class SessionWorkflow:
             quiz = []
             errors["quiz"] = f"Quiz generation failed: {e}"
 
-        # Final: AI-generated title from the most focused signal available
-        source_title = _generate_title(title_input if title_input else content)
+        # Final: AI-generated title from the most focused signal available.
+        # _generate_title is synchronous and runs safely inside the thread pool thread.
+        source_title = await asyncio.to_thread(_generate_title, title_input if title_input else content)
         yield RunResponse(
             event="workflow_completed",
             content={
