@@ -125,10 +125,14 @@ export default function StudyPage() {
   function updateSession(patch: Partial<SessionResult>) {
     setSession((prev) => {
       if (!prev) return prev;
-      const updated = { ...prev, ...patch };
-      localStorage.setItem(`session:${sessionId}`, JSON.stringify(updated));
-      return updated;
+      return { ...prev, ...patch };
     });
+    // Persist outside state setter — side effects must not live inside React updaters.
+    // Use the current persisted value from localStorage to merge, since setSession is async.
+    const current = JSON.parse(localStorage.getItem(`session:${sessionId}`) ?? "null");
+    if (current) {
+      localStorage.setItem(`session:${sessionId}`, JSON.stringify({ ...current, ...patch }));
+    }
   }
 
   async function generateFlashcards() {
