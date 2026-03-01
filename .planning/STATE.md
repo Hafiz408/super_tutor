@@ -2,19 +2,19 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-28)
+See: .planning/PROJECT.md (updated 2026-03-01 after v2.0)
 
 **Core value:** A user gives a topic (URL or description), picks how they want to learn, and gets a complete, ready-to-study session in minutes — no account needed, no friction.
-**Current focus:** v2.0 In-Session Chat — Phase 4 (Chat Backend) in progress
+**Current focus:** Planning next milestone — run `/gsd:new-milestone`
 
 ## Current Position
 
-Phase: 4 of 5 (Chat Backend)
-Plan: 1 of ? in current phase
-Status: In progress
-Last activity: 2026-03-01 - Completed quick task 6: LLM retry + rate limit handling with tenacity
+Phase: All v2.0 phases complete
+Plan: All plans complete
+Status: v2.0 milestone archived — ready for next milestone
+Last activity: 2026-03-01 - Archived v2.0 In-Session Chat milestone
 
-Progress: [████████░░] 80% (v1.0 complete, v2.0 not started)
+Progress: [██████████] 100% (v1.0 complete, v2.0 complete)
 
 ## Performance Metrics
 
@@ -42,19 +42,7 @@ Progress: [████████░░] 80% (v1.0 complete, v2.0 not started)
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
-- [v2.0 research]: Use `fetch` + `ReadableStream` for chat POST streaming — not `EventSource` (GET-only); avoids PENDING_STORE two-step workaround
-- [v2.0 research]: Send session notes as chat system context, not raw article — already compressed, lower token cost per turn
-- [v2.0 research]: Cap conversation history at 6 turns sent to backend; display all turns in UI
-- [v2.0 research]: `chatHistory` in component state (not localStorage) — ephemeral per page load, consistent with stateless model
-- [v2.0 research]: Gate chat availability on notes being present — notes exist after SSE complete, before flashcard/quiz generation
-- [Phase 03-04]: `asyncio.to_thread` used for sync `agent.run()` calls inside async generator — same pattern applies to chat agent
-- [Phase 04-01]: Stateless agent per request — new Agent constructed on every request; client owns conversation history
-- [Phase 04-01]: Hard grounding wording: "Answer ONLY from the session material" with explicit fallback response string
-- [Phase 04-01]: List[Message] passed to agent.arun() — history + current message; last Message(role=user) is current turn per Agno 2.5.2
-- [Phase 04-01]: No server-side history cap — 6-turn limit is enforced client-side
+Decisions are logged in PROJECT.md Key Decisions table (fully updated after v2.0 archive).
 
 ### Pending Todos
 
@@ -62,7 +50,7 @@ None yet.
 
 ### Blockers/Concerns
 
-None identified for v2.0 phases.
+None.
 
 ### Quick Tasks Completed
 
@@ -77,5 +65,5 @@ None identified for v2.0 phases.
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Completed quick-6 (LLM retry + rate limit handling with tenacity)
+Stopped at: v2.0 milestone archived. Ready for /gsd:new-milestone
 Resume file: None
