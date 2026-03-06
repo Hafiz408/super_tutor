@@ -72,5 +72,5 @@ Plans:
 | 3. Study Experience Polish | v1.0 | 5/5 | Complete | 2026-02-28 |
 | 4. Chat Backend | v2.0 | 2/2 | Complete | 2026-03-01 |
 | 5. Chat Frontend | v2.0 | 2/2 | Complete | 2026-03-01 |
-| 6. AgentOS Core Integration | 1/3 | In Progress|  | - |
+| 6. AgentOS Core Integration | 2/3 | In Progress|  | - |
 | 7. Control Plane Connection | v3.0 | 0/? | Not started | - |

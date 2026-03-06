@@ -9,21 +9,21 @@ Requirements for AgentOS Observability milestone. Each maps to roadmap phases.
 
 ### Integration
 
-- [ ] **INT-01**: Backend FastAPI app wrapped with AgentOS (`base_app=app`) so existing SSE endpoints remain functional
-- [ ] **INT-02**: All agents (notes, chat, research, flashcard, quiz) registered with AgentOS and given a `db=` for trace storage
+- [x] **INT-01**: Backend FastAPI app wrapped with AgentOS (`base_app=app`) so existing SSE endpoints remain functional
+- [x] **INT-02**: All agents (notes, chat, research, flashcard, quiz) registered with AgentOS and given a `db=` for trace storage
 - [x] **INT-03**: Agno version confirmed and upgraded to support AgentOS if needed
 
 ### Tracing
 
-- [ ] **TRAC-01**: All agent runs produce traces (inputs, outputs, latency) stored in SQLite
-- [ ] **TRAC-02**: LLM token usage and model metadata captured per agent run
+- [x] **TRAC-01**: All agent runs produce traces (inputs, outputs, latency) stored in SQLite
+- [x] **TRAC-02**: LLM token usage and model metadata captured per agent run
 - [ ] **TRAC-03**: Errors and retry events (tenacity backoff) visible in traces
 - [ ] **TRAC-04**: Traces isolated per user session (no cross-session bleed)
 
 ### Storage
 
 - [x] **STOR-01**: SQLite db configured for trace storage (file path configurable via env var)
-- [ ] **STOR-02**: Database tables created automatically on startup (no manual migration step)
+- [x] **STOR-02**: Database tables created automatically on startup (no manual migration step)
 
 ### Control Plane
 
@@ -58,15 +58,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INT-01 | Phase 6 | Pending |
-| INT-02 | Phase 6 | Pending |
+| INT-01 | Phase 6 | Complete |
+| INT-02 | Phase 6 | Complete |
 | INT-03 | Phase 6 | Complete |
-| TRAC-01 | Phase 6 | Pending |
-| TRAC-02 | Phase 6 | Pending |
+| TRAC-01 | Phase 6 | Complete |
+| TRAC-02 | Phase 6 | Complete |
 | TRAC-03 | Phase 6 | Pending |
 | TRAC-04 | Phase 6 | Pending |
 | STOR-01 | Phase 6 | Complete |
-| STOR-02 | Phase 6 | Pending |
+| STOR-02 | Phase 6 | Complete |
 | CTRL-01 | Phase 7 | Pending |
 | CTRL-02 | Phase 7 | Pending |
 | CTRL-03 | Phase 7 | Pending |

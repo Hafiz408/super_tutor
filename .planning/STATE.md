@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-03-06 after v3.0 milestone start)
 ## Current Position
 
 Phase: 6 — AgentOS Core Integration
-Plan: 1 of N complete
-Status: In progress — 06-01 complete
-Last activity: 2026-03-06 — 06-01 complete (agno bump + trace_db_path config)
+Plan: 2 of N complete
+Status: In progress — 06-02 complete
+Last activity: 2026-03-06 — 06-02 complete (AgentOS wrapping + db= parameter injection)
 
-Progress: [█░░░░░░░░░] Phase 6 plan 1 complete
+Progress: [██░░░░░░░░] Phase 6 plan 2 complete
 
 ## Performance Metrics
 
@@ -32,7 +32,7 @@ Progress: [█░░░░░░░░░] Phase 6 plan 1 complete
 | 03-study-experience-polish | 5 | ~10min | ~2min |
 | 04-chat-backend | 1 | ~2min | ~2min |
 | 05-chat-frontend | 3 | ~6min | ~2min |
-| 06-agentos-core-integration | 1 (in progress) | ~2min | ~2min |
+| 06-agentos-core-integration | 2 (in progress) | ~8min | ~4min |
 
 **Recent Trend:**
 - Last 5 plans: 03-01 (2min), 03-02 (2min), 03-03 (2min), 03-04 (2min), 03-05 (2min)
@@ -50,6 +50,12 @@ Decisions are logged in PROJECT.md Key Decisions table (fully updated after v2.0
 - agno pinned to >=2.5.7 (not ==) to allow patch upgrades while guaranteeing AgentOS minimum
 - trace_db_path default is tmp/super_tutor_traces.db (relative to backend/); SqliteDb creates dir on first write
 - TRACE_DB_PATH env var override uses pydantic-settings convention automatically
+
+**06-02 decisions:**
+- on_route_conflict="preserve_base_app" required — AgentOS default overrides POST /sessions with its own agent session list endpoint
+- sqlalchemy added to requirements.txt — agno.db.sqlite imports it at module level; was missing
+- One representative NotesAgent in agents=[] to satisfy AgentOS startup; db= at call time in routers handles actual tracing
+- tracing=True OTEL warning is informational only — SQLite tracing works without OpenTelemetry packages
 
 ### v3.0 Key Context
 
@@ -83,6 +89,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-06
-Stopped at: Completed 06-01-PLAN.md (agno bump + trace_db_path config)
+Stopped at: Completed 06-02-PLAN.md (AgentOS wrapping + db= parameter injection)
 Resume file: None
-Next step: Execute 06-02-PLAN.md
+Next step: Execute 06-03-PLAN.md
