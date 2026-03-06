@@ -61,7 +61,11 @@ Plans:
   1. The backend authenticates to app.agno.com on startup (AGNO_API_KEY env var set; no manual step required)
   2. After triggering a session or chat turn, the corresponding agent run appears in the Control Plane trace explorer within a few seconds
   3. The Control Plane UI shows session-level cost (token spend) and can be filtered or queried by session
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — Config + monitoring=True: add AGNO_API_KEY/AGNO_MONITOR to Settings and .env.example, add monitoring=True to all five agents, add startup diagnostic log
+- [ ] 07-02-PLAN.md — CORS fix + human verify: add os.agno.com to CORS origins, verify both app.agno.com and os.agno.com show agent run and cost data
 
 ## Progress
 
@@ -72,5 +76,5 @@ Plans:
 | 3. Study Experience Polish | v1.0 | 5/5 | Complete | 2026-02-28 |
 | 4. Chat Backend | v2.0 | 2/2 | Complete | 2026-03-01 |
 | 5. Chat Frontend | v2.0 | 2/2 | Complete | 2026-03-01 |
-| 6. AgentOS Core Integration | 3/3 | Complete   | 2026-03-06 | - |
-| 7. Control Plane Connection | v3.0 | 0/? | Not started | - |
+| 6. AgentOS Core Integration | v3.0 | 3/3 | Complete | 2026-03-06 |
+| 7. Control Plane Connection | v3.0 | 0/2 | Not started | - |
