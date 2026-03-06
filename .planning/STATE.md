@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-06 after v3.0 milestone start)
 
 **Core value:** A user gives a topic (URL or description), picks how they want to learn, and gets a complete, ready-to-study session in minutes — no account needed, no friction.
-**Current focus:** v3.0 AgentOS Observability — Phase 6: AgentOS Core Integration
+**Current focus:** v3.0 AgentOS Observability — Phase 7: Control Plane Connection
 
 ## Current Position
 
-Phase: 6 — AgentOS Core Integration
-Plan: 3 of N complete
-Status: In progress — 06-03 complete
-Last activity: 2026-03-06 — 06-03 complete (session_id threading + retry log visibility)
+Phase: 7 — Control Plane Connection
+Plan: 1 of 1 complete
+Status: In progress — 07-01 complete
+Last activity: 2026-03-06 — 07-01 complete (Agno telemetry settings + telemetry=True on all agents)
 
-Progress: [███░░░░░░░] Phase 6 plan 3 complete
+Progress: [████░░░░░░] Phase 7 plan 1 complete
 
 ## Performance Metrics
 
@@ -32,7 +32,8 @@ Progress: [███░░░░░░░] Phase 6 plan 3 complete
 | 03-study-experience-polish | 5 | ~10min | ~2min |
 | 04-chat-backend | 1 | ~2min | ~2min |
 | 05-chat-frontend | 3 | ~6min | ~2min |
-| 06-agentos-core-integration | 3 (in progress) | ~11min | ~4min |
+| 06-agentos-core-integration | 3 | ~11min | ~4min |
+| 07-control-plane-connection | 1 (in progress) | ~5min | ~5min |
 
 **Recent Trend:**
 - Last 5 plans: 03-01 (2min), 03-02 (2min), 03-03 (2min), 03-04 (2min), 03-05 (2min)
@@ -62,6 +63,12 @@ Decisions are logged in PROJECT.md Key Decisions table (fully updated after v2.0
 - session_id: str = "" default in ChatStreamRequest ensures backward compatibility with existing frontend clients
 - run_with_retry already accepts **kwargs and forwards them to fn, so session_id flows to agent.run() without changes to retry utility signature
 - before_sleep_log coexists with existing manual logger.warning inside loop body — both fire at slightly different times
+
+**07-01 decisions:**
+- agno 2.5.x Agent uses telemetry= not monitoring=; monitoring= would TypeError at runtime
+- AGNO_TELEMETRY is the correct SDK env var; AGNO_MONITOR does not exist in agno 2.5.x
+- agno_telemetry defaults to True in Settings (matching SDK default); disable by setting AGNO_TELEMETRY=false
+- AGNO_API_KEY field retained in Settings for future control plane auth even though not yet consumed by 2.5.x SDK
 
 ### v3.0 Key Context
 
@@ -95,6 +102,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-06
-Stopped at: Completed 06-03-PLAN.md (session_id threading + retry log visibility)
+Stopped at: Completed 07-01-PLAN.md (Agno telemetry settings + telemetry=True on all agents)
 Resume file: None
-Next step: Execute next plan in phase 06
+Next step: Execute next plan in phase 07 (or begin phase 08 if 07 is complete)

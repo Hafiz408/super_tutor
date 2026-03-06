@@ -77,4 +77,4 @@ Plans:
 | 4. Chat Backend | v2.0 | 2/2 | Complete | 2026-03-01 |
 | 5. Chat Frontend | v2.0 | 2/2 | Complete | 2026-03-01 |
 | 6. AgentOS Core Integration | v3.0 | 3/3 | Complete | 2026-03-06 |
-| 7. Control Plane Connection | v3.0 | 0/2 | Not started | - |
+| 7. Control Plane Connection | 1/2 | In Progress|  | - |

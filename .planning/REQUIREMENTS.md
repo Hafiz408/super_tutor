@@ -27,8 +27,8 @@ Requirements for AgentOS Observability milestone. Each maps to roadmap phases.
 
 ### Control Plane
 
-- [ ] **CTRL-01**: Backend connected to AgentOS Control Plane at app.agno.com
-- [ ] **CTRL-02**: Agent runs visible in Control Plane trace explorer
+- [x] **CTRL-01**: Backend connected to AgentOS Control Plane at app.agno.com
+- [x] **CTRL-02**: Agent runs visible in Control Plane trace explorer
 - [ ] **CTRL-03**: Session and cost data queryable from Control Plane UI
 
 ## Future Requirements
@@ -67,8 +67,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TRAC-04 | Phase 6 | Complete |
 | STOR-01 | Phase 6 | Complete |
 | STOR-02 | Phase 6 | Complete |
-| CTRL-01 | Phase 7 | Pending |
-| CTRL-02 | Phase 7 | Pending |
+| CTRL-01 | Phase 7 | Complete |
+| CTRL-02 | Phase 7 | Complete |
 | CTRL-03 | Phase 7 | Pending |
 
 **Coverage:**
