@@ -11,7 +11,7 @@ Requirements for AgentOS Observability milestone. Each maps to roadmap phases.
 
 - [ ] **INT-01**: Backend FastAPI app wrapped with AgentOS (`base_app=app`) so existing SSE endpoints remain functional
 - [ ] **INT-02**: All agents (notes, chat, research, flashcard, quiz) registered with AgentOS and given a `db=` for trace storage
-- [ ] **INT-03**: Agno version confirmed and upgraded to support AgentOS if needed
+- [x] **INT-03**: Agno version confirmed and upgraded to support AgentOS if needed
 
 ### Tracing
 
@@ -22,7 +22,7 @@ Requirements for AgentOS Observability milestone. Each maps to roadmap phases.
 
 ### Storage
 
-- [ ] **STOR-01**: SQLite db configured for trace storage (file path configurable via env var)
+- [x] **STOR-01**: SQLite db configured for trace storage (file path configurable via env var)
 - [ ] **STOR-02**: Database tables created automatically on startup (no manual migration step)
 
 ### Control Plane
@@ -60,12 +60,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | INT-01 | Phase 6 | Pending |
 | INT-02 | Phase 6 | Pending |
-| INT-03 | Phase 6 | Pending |
+| INT-03 | Phase 6 | Complete |
 | TRAC-01 | Phase 6 | Pending |
 | TRAC-02 | Phase 6 | Pending |
 | TRAC-03 | Phase 6 | Pending |
 | TRAC-04 | Phase 6 | Pending |
-| STOR-01 | Phase 6 | Pending |
+| STOR-01 | Phase 6 | Complete |
 | STOR-02 | Phase 6 | Pending |
 | CTRL-01 | Phase 7 | Pending |
 | CTRL-02 | Phase 7 | Pending |

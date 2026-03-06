@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-03-06 after v3.0 milestone start)
 ## Current Position
 
 Phase: 6 — AgentOS Core Integration
-Plan: Not started
-Status: Roadmap created, ready for plan-phase
-Last activity: 2026-03-06 — v3.0 roadmap created (Phases 6–7)
+Plan: 1 of N complete
+Status: In progress — 06-01 complete
+Last activity: 2026-03-06 — 06-01 complete (agno bump + trace_db_path config)
 
-Progress: [░░░░░░░░░░] 0% (v3.0 Phase 6 not started)
+Progress: [█░░░░░░░░░] Phase 6 plan 1 complete
 
 ## Performance Metrics
 
@@ -32,6 +32,7 @@ Progress: [░░░░░░░░░░] 0% (v3.0 Phase 6 not started)
 | 03-study-experience-polish | 5 | ~10min | ~2min |
 | 04-chat-backend | 1 | ~2min | ~2min |
 | 05-chat-frontend | 3 | ~6min | ~2min |
+| 06-agentos-core-integration | 1 (in progress) | ~2min | ~2min |
 
 **Recent Trend:**
 - Last 5 plans: 03-01 (2min), 03-02 (2min), 03-03 (2min), 03-04 (2min), 03-05 (2min)
@@ -45,12 +46,17 @@ Progress: [░░░░░░░░░░] 0% (v3.0 Phase 6 not started)
 
 Decisions are logged in PROJECT.md Key Decisions table (fully updated after v2.0 archive).
 
+**06-01 decisions:**
+- agno pinned to >=2.5.7 (not ==) to allow patch upgrades while guaranteeing AgentOS minimum
+- trace_db_path default is tmp/super_tutor_traces.db (relative to backend/); SqliteDb creates dir on first write
+- TRACE_DB_PATH env var override uses pydantic-settings convention automatically
+
 ### v3.0 Key Context
 
 - AgentOS wraps FastAPI via `base_app=app` parameter — SSE endpoints must remain unbroken
 - All five agents need `db=` added: notes, chat, research, flashcard, quiz
 - SQLite chosen for trace storage (dev-friendly, no infra needed); file path via env var
-- Agno currently at 2.5.2 — may need upgrade to support AgentOS features (INT-03)
+- Agno bumped to >=2.5.7 — AgentOS classes now available (INT-03 complete, 06-01)
 - tenacity retry events should surface in traces, not disappear silently (TRAC-03)
 - Control Plane connection (app.agno.com) is a Phase 7 concern, separate from local tracing
 - AGNO_API_KEY env var needed for Control Plane auth (Phase 7)
@@ -77,6 +83,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-06
-Stopped at: v3.0 roadmap created — Phases 6 and 7 defined
+Stopped at: Completed 06-01-PLAN.md (agno bump + trace_db_path config)
 Resume file: None
-Next step: `/gsd:plan-phase 6`
+Next step: Execute 06-02-PLAN.md
