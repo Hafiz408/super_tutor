@@ -1,4 +1,4 @@
-agno>=2.5.2
+agno>=2.5.7
 fastapi>=0.115.0
 sse-starlette>=3.2.0
 uvicorn[standard]>=0.29.0
