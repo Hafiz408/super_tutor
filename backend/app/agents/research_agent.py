@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import List
 
 from agno.agent import Agent
+from agno.db.sqlite import SqliteDb
 from agno.tools.tavily import TavilyTools
 
 from app.agents.model_factory import get_model
@@ -21,10 +22,11 @@ class ResearchResult:
     sources: List[str] = field(default_factory=list)
 
 
-def build_research_agent() -> Agent:
+def build_research_agent(db: SqliteDb | None = None) -> Agent:
     return Agent(
         name="ResearchAgent",
         model=get_model(),
+        db=db,
         tools=[TavilyTools()],
         instructions="""You are a research assistant. When given a topic, perform web research and synthesize findings.
 

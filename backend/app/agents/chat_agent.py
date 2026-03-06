@@ -1,10 +1,11 @@
 from agno.agent import Agent
+from agno.db.sqlite import SqliteDb
 from agno.models.message import Message
 from app.agents.model_factory import get_model
 from app.agents.personas import PERSONAS
 
 
-def build_chat_agent(tutoring_type: str, notes: str) -> Agent:
+def build_chat_agent(tutoring_type: str, notes: str, db: SqliteDb | None = None) -> Agent:
     """
     Build a stateless chat agent grounded in the provided session notes.
     A new agent is constructed on every request — no server-side state.
@@ -15,6 +16,7 @@ def build_chat_agent(tutoring_type: str, notes: str) -> Agent:
     return Agent(
         name="ChatAgent",
         model=get_model(),
+        db=db,
         instructions=f"""{persona}
 
 You are a tutoring assistant helping a student understand the session material below.

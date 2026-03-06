@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from typing import AsyncIterator, Any
 
 from agno.agent import Agent
+from agno.db.sqlite import SqliteDb
 from app.agents.model_factory import get_model
 from app.config import get_settings
 from app.utils.retry import run_with_retry
@@ -44,10 +45,11 @@ def _extract_title(content: str, url: str = "") -> str:
     return url[:80] if url else "Untitled"
 
 
-def _generate_title(text: str, fallback: str = "") -> str:
+def _generate_title(text: str, fallback: str = "", db: SqliteDb | None = None) -> str:
     """Ask the AI for a concise 3-5 word title. Falls back to fallback (truncated) or _extract_title on failure."""
     agent = Agent(
         model=get_model(),
+        db=db,
         instructions=(
             "Generate a concise 3-5 word title that captures the main subject of the content provided. "
             "Return ONLY the title — no punctuation at the end, no quotes, no explanation."
@@ -83,9 +85,10 @@ class SessionWorkflow:
     thread pool via asyncio.to_thread so the event loop stays unblocked between SSE yields.
     """
 
-    def __init__(self, tutoring_type: str):
+    def __init__(self, tutoring_type: str, db: SqliteDb | None = None):
         self.tutoring_type = tutoring_type
-        self.notes_agent = build_notes_agent(tutoring_type)
+        self.db = db
+        self.notes_agent = build_notes_agent(tutoring_type, db=self.db)
 
     async def run(
         self,
@@ -122,7 +125,7 @@ class SessionWorkflow:
 
         # Final: AI-generated title from the most focused signal available.
         # _generate_title is synchronous and runs safely inside the thread pool thread.
-        source_title = await asyncio.to_thread(_generate_title, title_input if title_input else content, title_input or url)
+        source_title = await asyncio.to_thread(_generate_title, title_input if title_input else content, title_input or url, self.db)
         yield RunResponse(
             event="workflow_completed",
             content={
@@ -138,6 +141,6 @@ class SessionWorkflow:
         )
 
 
-def build_workflow(tutoring_type: str) -> SessionWorkflow:
+def build_workflow(tutoring_type: str, db: SqliteDb | None = None) -> SessionWorkflow:
     """Factory: creates SessionWorkflow for the given tutoring type."""
-    return SessionWorkflow(tutoring_type=tutoring_type)
+    return SessionWorkflow(tutoring_type=tutoring_type, db=db)

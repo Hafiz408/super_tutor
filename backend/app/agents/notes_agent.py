@@ -1,13 +1,15 @@
 from agno.agent import Agent
+from agno.db.sqlite import SqliteDb
 from app.agents.model_factory import get_model
 from app.agents.personas import PERSONAS
 
 
-def build_notes_agent(tutoring_type: str) -> Agent:
+def build_notes_agent(tutoring_type: str, db: SqliteDb | None = None) -> Agent:
     persona = PERSONAS[tutoring_type]
     return Agent(
         name="NotesAgent",
         model=get_model(),
+        db=db,
         instructions=f"""{persona}
 
 Generate structured study notes from the provided content.
