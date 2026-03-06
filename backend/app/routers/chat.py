@@ -7,9 +7,25 @@ from sse_starlette.sse import EventSourceResponse
 
 from app.models.chat import ChatStreamRequest
 from app.agents.chat_agent import build_chat_agent, build_chat_messages
+from app.config import get_settings
+from agno.db.sqlite import SqliteDb
 
 logger = logging.getLogger("super_tutor.chat")
 router = APIRouter()
+
+
+def _get_traces_db() -> SqliteDb:
+    """Return the shared trace db instance, creating it if needed (lazy singleton).
+    Uses the same db_file path and id='super_tutor_traces' as main.py and sessions.py
+    so all three SqliteDb objects write to the same SQLite file and table.
+    """
+    if not hasattr(_get_traces_db, "_instance"):
+        settings = get_settings()
+        _get_traces_db._instance = SqliteDb(
+            db_file=settings.trace_db_path,
+            id="super_tutor_traces",
+        )
+    return _get_traces_db._instance
 
 
 @router.post("/stream")
@@ -25,7 +41,7 @@ async def chat_stream(request: ChatStreamRequest):
     CRITICAL: Uses agent.arun(stream=True) — a native async generator.
     Do NOT use asyncio.to_thread here (RESEARCH.md Pitfall 1: breaks streaming).
     """
-    agent = build_chat_agent(request.tutoring_type, request.notes)
+    agent = build_chat_agent(request.tutoring_type, request.notes, db=_get_traces_db())
     messages = build_chat_messages(
         [m.model_dump() for m in request.history],
         request.message,
@@ -39,7 +55,7 @@ async def chat_stream(request: ChatStreamRequest):
 
     async def event_generator() -> AsyncGenerator[dict, None]:
         try:
-            async for chunk in agent.arun(messages, stream=True):
+            async for chunk in agent.arun(messages, stream=True, session_id=request.session_id):
                 # RunEvent.run_content == "RunContent" (str enum from agno/run/agent.py)
                 # Only yield content events — filter out RunStarted, ToolCallStarted, etc.
                 if chunk.event == "RunContent" and chunk.content:

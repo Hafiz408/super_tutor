@@ -11,7 +11,7 @@ Usage:
 import logging
 from typing import Any, Callable
 
-from tenacity import Retrying, retry_if_exception, stop_after_attempt, wait_exponential
+from tenacity import Retrying, before_sleep_log, retry_if_exception, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger("super_tutor.retry")
 
@@ -70,6 +70,7 @@ def run_with_retry(
         wait=wait_exponential(multiplier=1, min=1, max=8),
         retry=retry_if_exception(is_retryable),
         reraise=True,
+        before_sleep=before_sleep_log(logger, logging.WARNING),  # TRAC-03: surface retry events in logs
     ):
         with attempt:
             attempt_number = attempt.retry_state.attempt_number
