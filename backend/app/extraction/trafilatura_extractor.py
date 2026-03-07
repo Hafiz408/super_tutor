@@ -13,13 +13,3 @@ def fetch_via_trafilatura(url: str) -> str | None:
         output_format="markdown",
     )
     return text if text and len(text) > 200 else None
-
-
-def extract_from_html(html: str) -> str | None:
-    """Used by Playwright layer to extract from already-fetched HTML."""
-    text = trafilatura.extract(
-        html,
-        include_tables=True,
-        output_format="markdown",
-    )
-    return text if text and len(text) > 200 else None
