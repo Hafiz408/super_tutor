@@ -10,7 +10,6 @@ def build_notes_agent(tutoring_type: str, db: SqliteDb | None = None) -> Agent:
         name="NotesAgent",
         model=get_model(),
         db=db,
-        telemetry=True,
         instructions=f"""{persona}
 
 You are producing comprehensive study notes from the provided content.

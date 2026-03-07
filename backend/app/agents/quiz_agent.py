@@ -10,7 +10,6 @@ def build_quiz_agent(tutoring_type: str, db: SqliteDb | None = None) -> Agent:
         name="QuizAgent",
         model=get_model(),
         db=db,
-        telemetry=True,
         instructions=f"""{persona}
 
 Generate a multiple-choice quiz from the provided study content.

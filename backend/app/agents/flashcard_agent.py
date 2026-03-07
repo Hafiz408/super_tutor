@@ -10,7 +10,6 @@ def build_flashcard_agent(tutoring_type: str, db: SqliteDb | None = None) -> Age
         name="FlashcardAgent",
         model=get_model(),
         db=db,
-        telemetry=True,
         instructions=f"""{persona}
 
 Generate flashcards from the provided study content.
