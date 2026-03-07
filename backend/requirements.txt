@@ -10,3 +10,7 @@ python-dotenv>=1.0.0
 openai>=1.56.0
 tavily-python>=0.3.0
 tenacity>=8.2.0
+
+# Observability
+opentelemetry-api>=1.27.0
+opentelemetry-sdk>=1.27.0
