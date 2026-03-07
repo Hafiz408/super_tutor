@@ -16,6 +16,7 @@ import time
 from dataclasses import dataclass, field
 from typing import AsyncGenerator, Any
 
+from agno.exceptions import InputCheckError
 from agno.workflow import Workflow, Step
 from agno.workflow.types import StepInput, StepOutput
 from agno.db.sqlite import SqliteDb
@@ -170,12 +171,18 @@ def notes_step(step_input: StepInput, session_state: dict) -> StepOutput:
     notes_agent = build_notes_agent(tutoring_type, db=traces_db)
     logger.info("Workflow step start — step=notes tutoring_type=%s", tutoring_type)
     _t = time.perf_counter()
-    notes_result = run_with_retry(
-        notes_agent.run,
-        input_text,
-        max_attempts=settings.agent_max_retries,
-        session_id=session_id,
-    )
+    try:
+        notes_result = run_with_retry(
+            notes_agent.run,
+            input_text,
+            max_attempts=settings.agent_max_retries,
+            session_id=session_id,
+        )
+    except InputCheckError as e:
+        logger.warning("Prompt injection blocked in notes_step — trigger=%s", e.check_trigger)
+        raise RuntimeError(
+            "Content rejected by input guardrail. If this is unexpected, try rephrasing your input."
+        ) from e
     logger.info("Workflow step done — step=notes elapsed=%.2fs", time.perf_counter() - _t)
 
     notes = notes_result.content or ""

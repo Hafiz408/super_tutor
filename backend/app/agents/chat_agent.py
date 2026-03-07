@@ -1,6 +1,7 @@
 from agno.agent import Agent
 from agno.db.sqlite import SqliteDb
 from agno.models.message import Message
+from app.agents.guardrails import PROMPT_INJECTION_GUARDRAIL, validate_substantive_output
 from app.agents.model_factory import get_model
 from app.agents.personas import PERSONAS
 
@@ -18,6 +19,8 @@ def build_chat_agent(tutoring_type: str, notes: str, db: SqliteDb | None = None)
         model=get_model(),
         db=db,
         enable_session_summaries=True,
+        pre_hooks=[PROMPT_INJECTION_GUARDRAIL],
+        post_hooks=[validate_substantive_output],
         instructions=f"""{persona}
 
 You are a tutoring assistant helping a student understand the session material below.
