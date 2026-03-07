@@ -10,7 +10,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from app.models.session import SessionRequest
 from app.extraction.chain import extract_content, ExtractionError
-from app.workflows.session_workflow import run_session_workflow, _parse_json_safe
+from app.workflows.session_workflow import run_session_workflow, build_session_workflow, _get_session_db, _parse_json_safe
 from app.agents.flashcard_agent import build_flashcard_agent
 from app.agents.quiz_agent import build_quiz_agent
 from app.agents.research_agent import run_research
@@ -31,6 +31,17 @@ def _get_traces_db() -> SqliteDb:
             id="super_tutor_traces",
         )
     return _get_traces_db._instance
+
+def _guard_session(session_id: str) -> None:
+    """Raise HTTP 404 if session_id has no stored workflow session in SQLite."""
+    wf = build_session_workflow(session_id=session_id, session_db=_get_session_db())
+    existing = wf.get_session(session_id=session_id)
+    if existing is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Session '{session_id}' not found or expired. Please create a new session.",
+        )
+
 
 logger = logging.getLogger("super_tutor.sessions")
 
@@ -228,6 +239,9 @@ async def regenerate_section(session_id: str, section: str, body: RegenerateRequ
     """Generates flashcards or quiz on demand using notes + tutoring_type from the client."""
     if section not in ("flashcards", "quiz"):
         raise HTTPException(status_code=400, detail="section must be 'flashcards' or 'quiz'")
+
+    # STOR-03: reject unknown/expired session_id with a clear 404
+    _guard_session(session_id)
 
     input_text = f"Content:\n{body.notes}"
 
