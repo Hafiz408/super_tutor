@@ -1,9 +1,7 @@
 "use client";
 import { Suspense, useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { SSE_STEPS, TOPIC_SSE_STEPS, ProgressEvent, CompleteEvent, ErrorEvent, WarningEvent } from "@/types/session";
-
-const PROGRESS_WEIGHTS = [20, 100] as const;
+import { buildExpectedSteps, ProgressEvent, CompleteEvent, ErrorEvent, WarningEvent } from "@/types/session";
 
 function LoadingContent() {
   const router = useRouter();
@@ -11,9 +9,12 @@ function LoadingContent() {
   const sessionId = searchParams.get("session_id");
   const tutoringType = searchParams.get("tutoring_type") ?? "";
   const focusPrompt = searchParams.get("focus_prompt") ?? "";
-  const inputMode = searchParams.get("input_mode") ?? "url";
+  const inputMode = (searchParams.get("input_mode") ?? "url") as "url" | "topic" | "paste";
+  const generateFlashcards = searchParams.get("generate_flashcards") === "true";
+  const generateQuiz = searchParams.get("generate_quiz") === "true";
 
-  const steps = inputMode === "topic" ? TOPIC_SSE_STEPS : SSE_STEPS;
+  const steps = buildExpectedSteps(inputMode, generateFlashcards, generateQuiz);
+
   const [currentMessage, setCurrentMessage] = useState<string>(steps[0]);
   const [stepIndex, setStepIndex] = useState(0);
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
@@ -66,7 +67,10 @@ function LoadingContent() {
     return () => es.close();
   }, [sessionId, router, tutoringType, focusPrompt, inputMode, steps]);
 
-  const progressPercent = PROGRESS_WEIGHTS[Math.min(stepIndex, PROGRESS_WEIGHTS.length - 1)];
+  // Progress bar: proportional to step index across dynamic step count
+  const progressPercent = steps.length > 1
+    ? Math.round(10 + (stepIndex / (steps.length - 1)) * 90)
+    : stepIndex === 0 ? 10 : 100;
 
   return (
     <main className="flex flex-col items-center justify-center min-h-[calc(100vh-56px)] p-8">
