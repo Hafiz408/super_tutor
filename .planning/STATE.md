@@ -73,10 +73,11 @@ None.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 16 | add prompt injection and output guardrails to the agents | 2026-03-07 | dcad322 | [16-add-prompt-injection-and-output-guardrai](./quick/16-add-prompt-injection-and-output-guardrai/) |
+| 17 | remove docs/ from git tracking | 2026-03-08 | 560b971 | [17-remove-docs-from-git-tracking](./quick/17-remove-docs-from-git-tracking/) |
 
 ## Session Continuity
 
-Last session: 2026-03-07
-Stopped at: Completed 08-02-PLAN.md (router wiring + SQLite round-trip test)
+Last session: 2026-03-08
+Stopped at: Completed quick task 17: remove docs/ from git tracking
 Resume file: None
 Next step: /gsd:execute-phase 08 (plan 03, if exists) or /gsd:execute-phase 09
