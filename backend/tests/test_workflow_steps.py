@@ -523,3 +523,147 @@ class TestNotesStepSessionStateWrites:
             notes_step(step_input, session_state)
 
         assert session_state.get("chat_intro") == CHAT_INTROS["advanced"]
+
+
+# ---------------------------------------------------------------------------
+# flashcards_step — happy path and non-fatal error handling
+# ---------------------------------------------------------------------------
+
+GOOD_FLASHCARDS = json.dumps([
+    {"front": "What is photosynthesis?", "back": "The process by which plants convert light to energy."},
+    {"front": "What is mitosis?", "back": "Cell division producing two identical daughter cells."},
+])
+
+
+class TestFlashcardsStep:
+    def test_flashcards_step_writes_flashcards_to_session_state(self):
+        """Happy path: valid JSON array written to session_state."""
+        source_content = "F" * 300
+        session_state: dict = {"source_content": source_content}
+        step_input = _make_step_input({
+            "session_id": "test-flash-001",
+            "tutoring_type": "advanced",
+        })
+        fake_result = _make_fake_result(GOOD_FLASHCARDS)
+        mock_agent = MagicMock()
+
+        with patch(
+            "app.workflows.session_workflow.build_flashcard_agent",
+            return_value=mock_agent,
+        ), patch(
+            "app.workflows.session_workflow.run_with_retry",
+            return_value=fake_result,
+        ):
+            from app.workflows.session_workflow import flashcards_step
+            output = flashcards_step(step_input, session_state)
+
+        assert "flashcards" in session_state, "session_state must contain 'flashcards'"
+        assert isinstance(session_state["flashcards"], list)
+        assert len(session_state["flashcards"]) == 2
+        assert session_state["flashcards"][0]["front"] == "What is photosynthesis?"
+        assert isinstance(output, StepOutput)
+        assert json.loads(output.content) == session_state["flashcards"]
+
+    def test_flashcards_step_handles_json_parse_error_non_fatally(self):
+        """If JSON parse fails, writes error to errors dict and returns empty list."""
+        source_content = "G" * 300
+        session_state: dict = {"source_content": source_content}
+        step_input = _make_step_input({
+            "session_id": "test-flash-002",
+            "tutoring_type": "advanced",
+        })
+        # Agent returns malformed JSON
+        fake_result = _make_fake_result("this is not valid JSON {{{")
+        mock_agent = MagicMock()
+
+        with patch(
+            "app.workflows.session_workflow.build_flashcard_agent",
+            return_value=mock_agent,
+        ), patch(
+            "app.workflows.session_workflow.run_with_retry",
+            return_value=fake_result,
+        ):
+            from app.workflows.session_workflow import flashcards_step
+            output = flashcards_step(step_input, session_state)
+
+        # Must not raise — non-fatal
+        assert isinstance(output, StepOutput)
+        assert json.loads(output.content) == []
+        assert session_state.get("flashcards") == []
+        assert "flashcards" in session_state.get("errors", {})
+
+    def test_flashcards_step_handles_empty_output_non_fatally(self):
+        """If agent returns empty output, writes error and continues."""
+        source_content = "H" * 300
+        session_state: dict = {"source_content": source_content}
+        step_input = _make_step_input({
+            "session_id": "test-flash-003",
+            "tutoring_type": "advanced",
+        })
+        # Agent returns empty content
+        fake_result = _make_fake_result("")
+        mock_agent = MagicMock()
+
+        with patch(
+            "app.workflows.session_workflow.build_flashcard_agent",
+            return_value=mock_agent,
+        ), patch(
+            "app.workflows.session_workflow.run_with_retry",
+            return_value=fake_result,
+        ):
+            from app.workflows.session_workflow import flashcards_step
+            output = flashcards_step(step_input, session_state)
+
+        assert isinstance(output, StepOutput)
+        assert json.loads(output.content) == []
+        assert session_state.get("flashcards") == []
+        assert "flashcards" in session_state.get("errors", {})
+
+    def test_flashcards_step_writes_to_errors_dict_on_failure(self):
+        """On any failure, session_state['errors']['flashcards'] is set."""
+        source_content = "I" * 300
+        session_state: dict = {"source_content": source_content}
+        step_input = _make_step_input({
+            "session_id": "test-flash-004",
+            "tutoring_type": "advanced",
+        })
+        mock_agent = MagicMock()
+
+        with patch(
+            "app.workflows.session_workflow.build_flashcard_agent",
+            return_value=mock_agent,
+        ), patch(
+            "app.workflows.session_workflow.run_with_retry",
+            side_effect=RuntimeError("Simulated agent crash"),
+        ):
+            from app.workflows.session_workflow import flashcards_step
+            output = flashcards_step(step_input, session_state)
+
+        # Step must not raise
+        assert isinstance(output, StepOutput)
+        errors = session_state.get("errors", {})
+        assert "flashcards" in errors, "errors['flashcards'] must be set on failure"
+        assert "Simulated agent crash" in errors["flashcards"]
+
+    def test_flashcards_step_returns_empty_list_when_no_source_content(self):
+        """If source_content is missing from session_state, returns [] non-fatally."""
+        session_state: dict = {}  # no source_content
+        step_input = _make_step_input({
+            "session_id": "test-flash-005",
+            "tutoring_type": "advanced",
+        })
+
+        with patch(
+            "app.workflows.session_workflow.build_flashcard_agent",
+            return_value=MagicMock(),
+        ), patch(
+            "app.workflows.session_workflow.run_with_retry",
+            return_value=_make_fake_result(GOOD_FLASHCARDS),
+        ):
+            from app.workflows.session_workflow import flashcards_step
+            output = flashcards_step(step_input, session_state)
+
+        assert isinstance(output, StepOutput)
+        assert json.loads(output.content) == []
+        assert session_state.get("flashcards") == []
+        assert "flashcards" in session_state.get("errors", {})

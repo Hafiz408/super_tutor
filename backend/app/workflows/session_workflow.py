@@ -22,6 +22,7 @@ from agno.workflow.types import StepInput, StepOutput
 from agno.db.sqlite import SqliteDb
 from agno.agent import Agent
 
+from app.agents.flashcard_agent import build_flashcard_agent
 from app.agents.model_factory import get_model
 from app.agents.notes_agent import build_notes_agent
 from app.agents.personas import CHAT_INTROS
@@ -283,6 +284,69 @@ def notes_step(step_input: StepInput, session_state: dict) -> StepOutput:
     session_state["chat_intro"] = CHAT_INTROS.get(tutoring_type, CHAT_INTROS["advanced"])
 
     return StepOutput(content=notes)
+
+
+# ---------------------------------------------------------------------------
+# flashcards_step executor
+# ---------------------------------------------------------------------------
+
+def flashcards_step(step_input: StepInput, session_state: dict) -> StepOutput:
+    """
+    Generates flashcards from source_content in session_state.
+    Non-fatal: failures write to session_state["errors"]["flashcards"] and return empty list.
+    Agno injects session_state by parameter name.
+
+    IMPORTANT: This function runs inside asyncio.to_thread — do NOT use await here.
+    """
+    settings = get_settings()
+
+    session_id = step_input.additional_data.get("session_id", "")
+    traces_db = step_input.additional_data.get("db") or step_input.additional_data.get("traces_db")
+    tutoring_type = step_input.additional_data.get("tutoring_type", "advanced")
+    source_content = session_state.get("source_content", "")
+
+    logger.info("[flashcards_step] start session_id=%s", session_id)
+
+    try:
+        if not source_content:
+            raise RuntimeError("No source_content in session_state for flashcards_step")
+
+        agent = build_flashcard_agent(tutoring_type=tutoring_type, db=traces_db)
+        result = run_with_retry(
+            agent.run,
+            source_content,
+            max_attempts=settings.agent_max_retries,
+            session_id=session_id,
+        )
+
+        if not result or not result.content:
+            raise RuntimeError("FlashcardAgent returned empty output")
+
+        # Parse JSON — strip markdown fences first
+        raw = result.content.strip()
+        raw = re.sub(r"^```(?:json)?\s*", "", raw)
+        raw = re.sub(r"\s*```$", "", raw)
+        flashcards = json.loads(raw)
+
+        if not isinstance(flashcards, list):
+            raise ValueError("FlashcardAgent output is not a JSON array")
+
+        session_state["flashcards"] = flashcards
+        logger.info("[flashcards_step] done session_id=%s count=%d", session_id, len(flashcards))
+        return StepOutput(content=json.dumps(flashcards))
+
+    except InputCheckError as e:
+        msg = f"Flashcard generation rejected by input guardrail: {e.check_trigger}"
+        logger.warning("[flashcards_step] InputCheckError session_id=%s: %s", session_id, msg)
+        session_state.setdefault("errors", {})["flashcards"] = msg
+        session_state["flashcards"] = []
+        return StepOutput(content="[]")
+    except Exception as e:
+        msg = str(e)
+        logger.warning("[flashcards_step] non-fatal error session_id=%s: %s", session_id, msg)
+        session_state.setdefault("errors", {})["flashcards"] = msg
+        session_state["flashcards"] = []
+        return StepOutput(content="[]")
 
 
 # ---------------------------------------------------------------------------
