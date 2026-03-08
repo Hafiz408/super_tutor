@@ -181,10 +181,9 @@ def research_step(step_input: StepInput, session_state: dict) -> StepOutput:
     # The ResearchAgent instructs the model to return JSON {content, sources}.
     # Strip markdown fences and attempt to parse; fall back to treating the
     # entire output as prose with no sources (matches research_agent._parse_json_safe).
-    import re as _re
     raw = result.content
-    cleaned = _re.sub(r"```(?:json)?\s*", "", raw).strip()
-    cleaned = _re.sub(r"```\s*$", "", cleaned).strip()
+    cleaned = re.sub(r"```(?:json)?\s*", "", raw).strip()
+    cleaned = re.sub(r"```\s*$", "", cleaned).strip()
     try:
         parsed = json.loads(cleaned)
         source_content = parsed.get("content", "")
