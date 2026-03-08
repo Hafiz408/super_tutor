@@ -206,6 +206,7 @@ def research_step(step_input: StepInput, session_state: dict) -> StepOutput:
     # Write to session_state — agno persists to SQLite in finally block
     session_state["source_content"] = source_content
     session_state["sources"] = sources
+    session_state["session_type"] = "topic"  # mark so notes_step/flashcards/quiz read from state
 
     return StepOutput(content=source_content)
 
@@ -232,8 +233,9 @@ def notes_step(step_input: StepInput, session_state: dict) -> StepOutput:
 
     traces_db = step_input.additional_data.get("traces_db")
 
-    # Determine source_content based on session_type
-    session_type = session_state.get("session_type", "")
+    # Determine source_content based on session_type.
+    # Prefer session_state (set by research_step for topic sessions), fall back to additional_data.
+    session_type = session_state.get("session_type") or step_input.additional_data.get("session_type", "")
     if session_type == "topic":
         source_content = session_state.get("source_content", "")
     else:
@@ -453,15 +455,33 @@ def title_step(step_input: StepInput, session_state: dict) -> StepOutput:
 # Workflow factory
 # ---------------------------------------------------------------------------
 
-def build_session_workflow(session_id: str, session_db: SqliteDb) -> Workflow:
+def build_session_workflow(
+    session_id: str,
+    session_db: SqliteDb,
+    session_type: str = "url",
+    generate_flashcards: bool = False,
+    generate_quiz: bool = False,
+) -> Workflow:
     """
-    Per-request factory. Never reuse across requests (CVE-2025-64168).
-    Uses Steps-list path (not callable path) so agno injects session_state correctly.
+    Per-request factory. Never reuse across requests.
+    Builds a conditional step list based on session_type and opt-in flags.
+    Calling with only session_id + session_db (e.g. from _guard_session) creates a
+    minimal workflow suitable for get_session() lookups.
     """
+    steps = []
+    if session_type == "topic":
+        steps.append(Step(name="research", executor=research_step))
+    steps.append(Step(name="notes", executor=notes_step))
+    if generate_flashcards:
+        steps.append(Step(name="flashcards", executor=flashcards_step))
+    if generate_quiz:
+        steps.append(Step(name="quiz", executor=quiz_step))
+    steps.append(Step(name="title", executor=title_step))
+
     return Workflow(
-        id="session-workflow",        # stable id — becomes workflow_id in DB rows
+        id="session-workflow",   # stable id — becomes workflow_id in DB rows
         name="Session Workflow",
-        steps=[Step(name="notes", executor=notes_step)],
+        steps=steps,
         db=session_db,
         session_id=session_id,
     )
@@ -473,57 +493,80 @@ def build_session_workflow(session_id: str, session_db: SqliteDb) -> Workflow:
 
 async def run_session_workflow(
     session_id: str,
-    content: str,
+    session_type: str,            # "topic" | "url" | "paste"
+    source_content: str,          # pre-extracted content (url/paste paths); "" for topic
+    topic_description: str,       # raw topic string (topic path); "" for url/paste
     tutoring_type: str,
     focus_prompt: str = "",
-    url: str = "",
-    session_type: str = "url",
-    sources: list | None = None,
-    title_input: str = "",
+    generate_flashcards: bool = False,
+    generate_quiz: bool = False,
     traces_db: SqliteDb | None = None,
 ) -> AsyncGenerator[RunResponse, None]:
     """
-    Async generator yielding RunResponse-compatible objects for the SSE router.
-    Wraps the sync Workflow.run() via asyncio.to_thread (STATE.md locked decision).
+    Async generator yielding RunResponse objects for the SSE router.
+    Yields upfront progress messages, then runs the workflow in a thread,
+    then yields a workflow_completed RunResponse with full session data.
     """
+    # Emit predicted progress messages before the thread starts (asyncio.to_thread
+    # is blocking — we can't yield from inside it).
+    if session_type == "topic":
+        yield RunResponse(content="Researching your topic...")
     yield RunResponse(content="Crafting your notes...")
+    if generate_flashcards:
+        yield RunResponse(content="Creating flashcards...")
+    if generate_quiz:
+        yield RunResponse(content="Building quiz questions...")
+    yield RunResponse(content="Generating title...")
 
-    workflow = build_session_workflow(session_id=session_id, session_db=_get_session_db())
+    workflow = build_session_workflow(
+        session_id=session_id,
+        session_db=_get_session_db(),
+        session_type=session_type,
+        generate_flashcards=generate_flashcards,
+        generate_quiz=generate_quiz,
+    )
 
-    result = await asyncio.to_thread(
+    await asyncio.to_thread(
         workflow.run,
         additional_data={
-            "source_content": content,
+            "session_id": session_id,
+            "session_type": session_type,
+            "source_content": source_content,
+            "topic_description": topic_description,
             "tutoring_type": tutoring_type,
             "focus_prompt": focus_prompt,
-            "session_type": session_type,
-            "sources": sources or [],
-            "session_id": session_id,
+            "generate_flashcards": generate_flashcards,
+            "generate_quiz": generate_quiz,
             "traces_db": traces_db,
         },
         session_id=session_id,
     )
 
-    notes = result.content if result else ""
+    # Read final state from in-memory workflow.session_state (already persisted to SQLite)
+    state = workflow.session_state or {}
+    notes = state.get("notes", "")
+    flashcards = state.get("flashcards", [])
+    quiz = state.get("quiz", [])
+    title = state.get("title", "Study Session")
+    sources = state.get("sources", [])
+    chat_intro = state.get("chat_intro", "")
+    errors = state.get("errors") or {}
 
-    source_title = await asyncio.to_thread(
-        _generate_title,
-        title_input if title_input else content,
-        title_input or url,
-        traces_db,
-        session_id,
-    )
+    # Emit non-fatal step errors as warnings so the frontend can surface them
+    for key, msg in errors.items():
+        yield RunResponse(event="warning", content=f"{key}: {msg}")
 
     yield RunResponse(
         event="workflow_completed",
         content={
-            "source_title": source_title,
+            "source_title": title,
             "tutoring_type": tutoring_type,
             "session_type": session_type,
             "sources": sources,
             "notes": notes,
-            "flashcards": [],
-            "quiz": [],
-            "errors": None,
+            "flashcards": flashcards,
+            "quiz": quiz,
+            "chat_intro": chat_intro,
+            "errors": errors or None,
         },
     )
