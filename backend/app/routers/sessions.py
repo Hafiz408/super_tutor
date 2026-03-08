@@ -13,7 +13,6 @@ from app.extraction.chain import extract_content, ExtractionError
 from app.workflows.session_workflow import run_session_workflow, build_session_workflow, _get_session_db, _parse_json_safe
 from app.agents.flashcard_agent import build_flashcard_agent
 from app.agents.quiz_agent import build_quiz_agent
-from app.agents.research_agent import run_research
 from app.config import get_settings
 from app.utils.retry import run_with_retry, is_retryable
 from agno.db.sqlite import SqliteDb
@@ -94,11 +93,7 @@ async def stream_session(session_id: str):
         focus_prompt = params.get("focus_prompt") or ""
 
         session_type = "url"
-        sources = None
-        # title_input: the focused signal passed to AI title generation.
-        # Topic sessions use topic_description (short, precise).
-        # URL/paste sessions pass empty string so the workflow uses the extracted content.
-        title_input = ""
+        content = ""
 
         # Input validation: topic too short
         if topic_description and len(topic_description.strip()) < 10:
@@ -111,50 +106,8 @@ async def stream_session(session_id: str):
         try:
             if topic_description:
                 session_type = "topic"
-                title_input = topic_description
-
-                # Vague topic detection: fewer than 3 words
-                word_count = len(topic_description.split())
-                if word_count < 3:
-                    yield {
-                        "event": "warning",
-                        "data": json.dumps({"message": "Your topic is quite broad — we'll do our best, but the content may be general. Consider adding more detail for better results."}),
-                    }
-                    await asyncio.sleep(0)
-
-                yield {
-                    "event": "progress",
-                    "data": json.dumps({"message": "Researching your topic..."}),
-                }
-                await asyncio.sleep(0)
-
-                try:
-                    result = run_research(topic_description, focus_prompt, session_id=session_id, db=_get_traces_db())
-                except Exception as e:
-                    logger.error("Research failed — session_id=%s error=%s", session_id, e, exc_info=True)
-                    if is_retryable(e):
-                        research_msg = "The AI is temporarily busy — please try again in a moment."
-                    else:
-                        research_msg = "Research failed. Please try again."
-                    yield {
-                        "event": "error",
-                        "data": json.dumps({"kind": "empty", "message": research_msg}),
-                    }
-                    return
-
-                content = result.content
-                sources = result.sources if result.sources else []
-
-                if not content or len(content.strip()) < 100:
-                    # Model returned too little — not a hard failure, continue with LLM knowledge
-                    content = f"Topic: {topic_description}\n\nFocus: {focus_prompt}" if focus_prompt else f"Topic: {topic_description}"
-                    sources = []
-                    yield {
-                        "event": "warning",
-                        "data": json.dumps({"message": "Research returned limited content — notes were generated from AI knowledge instead."}),
-                    }
-                    await asyncio.sleep(0)
-
+                # source_content is empty for topic sessions; workflow's research_step fetches it
+                content = ""
             elif paste_text:
                 content = paste_text
             elif url:
@@ -190,18 +143,19 @@ async def stream_session(session_id: str):
         try:
             async for response in run_session_workflow(
                 session_id=session_id,
-                content=content,
+                session_type=session_type,
+                source_content=content,
+                topic_description=topic_description,
                 tutoring_type=tutoring_type,
                 focus_prompt=focus_prompt,
-                url=str(params.get("url") or ""),
-                session_type=session_type,
-                sources=sources,
-                title_input=title_input,
+                generate_flashcards=params.get("generate_flashcards", False),
+                generate_quiz=params.get("generate_quiz", False),
                 traces_db=_get_traces_db(),
             ):
-                # Check if this is the final completed response
+                # Classify the response by event name
                 event_name = getattr(response.event, "value", str(response.event)) if response.event else ""
                 is_complete = "completed" in event_name or isinstance(response.content, dict)
+                is_warning = "warning" in event_name
 
                 if is_complete and isinstance(response.content, dict):
                     session_data = {"session_id": session_id, **response.content}
@@ -209,6 +163,11 @@ async def stream_session(session_id: str):
                     yield {
                         "event": "complete",
                         "data": json.dumps(session_data),
+                    }
+                elif is_warning and isinstance(response.content, str):
+                    yield {
+                        "event": "warning",
+                        "data": json.dumps({"message": response.content}),
                     }
                 elif isinstance(response.content, str):
                     # Progress message
