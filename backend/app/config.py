@@ -20,6 +20,7 @@ class Settings(BaseSettings):
 
     # Trace storage — SQLite db for AgentOS run traces
     trace_db_path: str = "tmp/super_tutor_traces.db"  # override with TRACE_DB_PATH env var
+    session_db_path: str = "tmp/super_tutor_sessions.db"  # override with SESSION_DB_PATH env var
 
     # CORS
     allowed_origins: List[str] | str = ["http://localhost:3000"]

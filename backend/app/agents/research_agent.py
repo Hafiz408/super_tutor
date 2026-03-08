@@ -7,8 +7,10 @@ from typing import List
 
 from agno.agent import Agent
 from agno.db.sqlite import SqliteDb
+from agno.exceptions import InputCheckError
 from agno.tools.tavily import TavilyTools
 
+from app.agents.guardrails import PROMPT_INJECTION_GUARDRAIL, validate_substantive_output
 from app.agents.model_factory import get_model
 from app.config import get_settings
 from app.utils.retry import run_with_retry
@@ -29,6 +31,8 @@ def build_research_agent(db: SqliteDb | None = None) -> Agent:
         db=db,
         enable_session_summaries=True,
         tools=[TavilyTools()],
+        pre_hooks=[PROMPT_INJECTION_GUARDRAIL],
+        post_hooks=[validate_substantive_output],
         instructions="""You are a research assistant. When given a topic, perform web research and synthesize findings.
 
 Steps:
@@ -73,11 +77,17 @@ def run_research(topic: str, focus_prompt: str = "", session_id: str = "", db: S
     logger.info("Research start — topic=%r focus=%r", topic[:80], focus_prompt[:40] if focus_prompt else "")
     _t = time.perf_counter()
     settings = get_settings()
-    response = run_with_retry(
-        agent.run, input_text,
-        max_attempts=settings.agent_max_retries,
-        session_id=session_id,  # TRAC-04: scope research agent trace to this session
-    )
+    try:
+        response = run_with_retry(
+            agent.run, input_text,
+            max_attempts=settings.agent_max_retries,
+            session_id=session_id,  # TRAC-04: scope research agent trace to this session
+        )
+    except InputCheckError as e:
+        logger.warning("Prompt injection blocked in run_research — trigger=%s", e.check_trigger)
+        raise RuntimeError(
+            "Research topic rejected by input guardrail."
+        ) from e
     raw = response.content if hasattr(response, "content") else str(response)
 
     data = _parse_json_safe(raw)
