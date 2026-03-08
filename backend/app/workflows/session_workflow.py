@@ -155,10 +155,11 @@ def research_step(step_input: StepInput, session_state: dict) -> StepOutput:
     IMPORTANT: This function runs inside asyncio.to_thread — do NOT use await here.
     """
     settings = get_settings()
+    data = step_input.additional_data or {}
 
-    topic_description = step_input.additional_data.get("topic_description", "")
-    session_id = step_input.additional_data.get("session_id", "")
-    traces_db = step_input.additional_data.get("db") or step_input.additional_data.get("traces_db")
+    topic_description = data.get("topic_description", "") or (step_input.message or "")
+    session_id = data.get("session_id", "")
+    traces_db = data.get("db") or data.get("traces_db")
 
     agent = build_research_agent(db=traces_db)
 
@@ -225,21 +226,22 @@ def notes_step(step_input: StepInput, session_state: dict) -> StepOutput:
     IMPORTANT: This function runs inside asyncio.to_thread — do NOT use await here.
     """
     settings = get_settings()
+    data = step_input.additional_data or {}
 
-    tutoring_type = step_input.additional_data.get("tutoring_type", "advanced")
-    focus_prompt = step_input.additional_data.get("focus_prompt", "")
-    session_id = step_input.additional_data.get("session_id", "")
+    tutoring_type = data.get("tutoring_type", "advanced")
+    focus_prompt = data.get("focus_prompt", "")
+    session_id = data.get("session_id", "")
 
-    traces_db = step_input.additional_data.get("traces_db")
+    traces_db = data.get("traces_db")
 
     # Determine source_content based on session_type.
     # Prefer session_state (set by research_step for topic sessions), fall back to additional_data.
-    session_type = session_state.get("session_type") or step_input.additional_data.get("session_type", "")
+    session_type = session_state.get("session_type") or data.get("session_type", "")
     if session_type == "topic":
         source_content = session_state.get("source_content", "")
     else:
         # url or paste path — read from additional_data and persist for downstream steps
-        source_content = step_input.additional_data.get("source_content", "")
+        source_content = data.get("source_content", "") or (step_input.message or "")
         session_state["source_content"] = source_content
         session_state["session_type"] = session_type  # persist url/paste so GET endpoint returns correct type
 
@@ -305,9 +307,10 @@ def flashcards_step(step_input: StepInput, session_state: dict) -> StepOutput:
     """
     settings = get_settings()
 
-    session_id = step_input.additional_data.get("session_id", "")
-    traces_db = step_input.additional_data.get("db") or step_input.additional_data.get("traces_db")
-    tutoring_type = step_input.additional_data.get("tutoring_type", "advanced")
+    data = step_input.additional_data or {}
+    session_id = data.get("session_id", "")
+    traces_db = data.get("db") or data.get("traces_db")
+    tutoring_type = data.get("tutoring_type", "advanced")
     source_content = session_state.get("source_content", "")
 
     logger.info("step start", extra={"session_id": session_id, "step": "flashcards"})
@@ -368,9 +371,10 @@ def quiz_step(step_input: StepInput, session_state: dict) -> StepOutput:
     """
     settings = get_settings()
 
-    session_id = step_input.additional_data.get("session_id", "")
-    traces_db = step_input.additional_data.get("db") or step_input.additional_data.get("traces_db")
-    tutoring_type = step_input.additional_data.get("tutoring_type", "advanced")
+    data = step_input.additional_data or {}
+    session_id = data.get("session_id", "")
+    traces_db = data.get("db") or data.get("traces_db")
+    tutoring_type = data.get("tutoring_type", "advanced")
     source_content = session_state.get("source_content", "")
 
     logger.info("step start", extra={"session_id": session_id, "step": "quiz"})
@@ -429,8 +433,9 @@ def title_step(step_input: StepInput, session_state: dict) -> StepOutput:
 
     IMPORTANT: This function runs inside asyncio.to_thread — do NOT use await here.
     """
-    session_id = step_input.additional_data.get("session_id", "")
-    traces_db = step_input.additional_data.get("db") or step_input.additional_data.get("traces_db")
+    data = step_input.additional_data or {}
+    session_id = data.get("session_id", "")
+    traces_db = data.get("db") or data.get("traces_db")
     notes = session_state.get("notes", "")
     source_content = session_state.get("source_content", "")
 

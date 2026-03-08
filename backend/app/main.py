@@ -61,6 +61,7 @@ from app.agents.chat_agent import build_chat_agent
 from app.agents.flashcard_agent import build_flashcard_agent
 from app.agents.quiz_agent import build_quiz_agent
 from app.agents.research_agent import build_research_agent
+from app.workflows.session_workflow import build_session_workflow, _get_session_db
 
 
 def _wrap_with_agentos(fastapi_app: FastAPI) -> FastAPI:
@@ -76,10 +77,21 @@ def _wrap_with_agentos(fastapi_app: FastAPI) -> FastAPI:
     tracing=True is set on the AgentOS instance. All five agents are registered
     in agents=[] to provide full visibility in the AgentOS playground UI —
     they do NOT replace per-request agent instances created inside routers.
+
+    The session workflow is registered in workflows=[] so it appears in the
+    AgentOS playground. This representative instance (all steps enabled) is
+    for UI visibility only — per-request instances are created inside routers.
     """
     traces_db = SqliteDb(
         db_file=settings.trace_db_path,
         id="super_tutor_traces",
+    )
+    session_workflow = build_session_workflow(
+        session_id="playground",
+        session_db=_get_session_db(),
+        session_type="topic",
+        generate_flashcards=True,
+        generate_quiz=True,
     )
     agent_os = AgentOS(
         agents=[
@@ -89,6 +101,7 @@ def _wrap_with_agentos(fastapi_app: FastAPI) -> FastAPI:
             build_quiz_agent("micro_learning", db=traces_db),
             build_research_agent(db=traces_db),
         ],
+        workflows=[session_workflow],
         base_app=fastapi_app,
         db=traces_db,
         tracing=True,
