@@ -162,7 +162,7 @@ def research_step(step_input: StepInput, session_state: dict) -> StepOutput:
 
     agent = build_research_agent(db=traces_db)
 
-    logger.info("Workflow step start — step=research topic=%r", topic_description[:80])
+    logger.info("step start", extra={"session_id": session_id, "step": "research", "topic": topic_description[:80]})
     _t = time.perf_counter()
     try:
         result = run_with_retry(
@@ -176,7 +176,7 @@ def research_step(step_input: StepInput, session_state: dict) -> StepOutput:
         raise RuntimeError(
             "Research topic rejected by input guardrail. If this is unexpected, try rephrasing your topic."
         ) from e
-    logger.info("Workflow step done — step=research elapsed=%.2fs", time.perf_counter() - _t)
+    logger.info("step done", extra={"session_id": session_id, "step": "research", "elapsed": round(time.perf_counter() - _t, 3)})
 
     if not result or not result.content:
         raise RuntimeError("ResearchAgent returned empty content")
@@ -241,6 +241,7 @@ def notes_step(step_input: StepInput, session_state: dict) -> StepOutput:
         # url or paste path — read from additional_data and persist for downstream steps
         source_content = step_input.additional_data.get("source_content", "")
         session_state["source_content"] = source_content
+        session_state["session_type"] = session_type  # persist url/paste so GET endpoint returns correct type
 
     # 50-char minimum (lower than research_step's 100) — user-supplied content can be
     # shorter prose; we only reject clearly empty or trivially short inputs.
@@ -257,7 +258,7 @@ def notes_step(step_input: StepInput, session_state: dict) -> StepOutput:
     )
 
     notes_agent = build_notes_agent(tutoring_type, db=traces_db)
-    logger.info("Workflow step start — step=notes tutoring_type=%s", tutoring_type)
+    logger.info("step start", extra={"session_id": session_id, "step": "notes", "tutoring_type": tutoring_type})
     _t = time.perf_counter()
     try:
         notes_result = run_with_retry(
@@ -271,7 +272,7 @@ def notes_step(step_input: StepInput, session_state: dict) -> StepOutput:
         raise RuntimeError(
             "Content rejected by input guardrail. If this is unexpected, try rephrasing your input."
         ) from e
-    logger.info("Workflow step done — step=notes elapsed=%.2fs", time.perf_counter() - _t)
+    logger.info("step done", extra={"session_id": session_id, "step": "notes", "elapsed": round(time.perf_counter() - _t, 3)})
 
     notes = notes_result.content or ""
     if len(notes.strip()) < 100:
@@ -309,7 +310,7 @@ def flashcards_step(step_input: StepInput, session_state: dict) -> StepOutput:
     tutoring_type = step_input.additional_data.get("tutoring_type", "advanced")
     source_content = session_state.get("source_content", "")
 
-    logger.info("[flashcards_step] start session_id=%s", session_id)
+    logger.info("step start", extra={"session_id": session_id, "step": "flashcards"})
 
     try:
         if not source_content:
@@ -336,18 +337,18 @@ def flashcards_step(step_input: StepInput, session_state: dict) -> StepOutput:
             raise ValueError("FlashcardAgent output is not a JSON array")
 
         session_state["flashcards"] = flashcards
-        logger.info("[flashcards_step] done session_id=%s count=%d", session_id, len(flashcards))
+        logger.info("step done", extra={"session_id": session_id, "step": "flashcards", "count": len(flashcards)})
         return StepOutput(content=json.dumps(flashcards))
 
     except InputCheckError as e:
         msg = f"Flashcard generation rejected by input guardrail: {e.check_trigger}"
-        logger.warning("[flashcards_step] InputCheckError session_id=%s: %s", session_id, msg)
+        logger.warning("step error", extra={"session_id": session_id, "step": "flashcards", "error": msg})
         session_state.setdefault("errors", {})["flashcards"] = msg
         session_state["flashcards"] = []
         return StepOutput(content="[]")
     except Exception as e:
         msg = str(e)
-        logger.warning("[flashcards_step] non-fatal error session_id=%s: %s", session_id, msg)
+        logger.warning("step error", extra={"session_id": session_id, "step": "flashcards", "error": msg})
         session_state.setdefault("errors", {})["flashcards"] = msg
         session_state["flashcards"] = []
         return StepOutput(content="[]")
@@ -372,7 +373,7 @@ def quiz_step(step_input: StepInput, session_state: dict) -> StepOutput:
     tutoring_type = step_input.additional_data.get("tutoring_type", "advanced")
     source_content = session_state.get("source_content", "")
 
-    logger.info("[quiz_step] start session_id=%s", session_id)
+    logger.info("step start", extra={"session_id": session_id, "step": "quiz"})
 
     try:
         if not source_content:
@@ -399,18 +400,18 @@ def quiz_step(step_input: StepInput, session_state: dict) -> StepOutput:
             raise ValueError("QuizAgent output is not a JSON array")
 
         session_state["quiz"] = quiz
-        logger.info("[quiz_step] done session_id=%s count=%d", session_id, len(quiz))
+        logger.info("step done", extra={"session_id": session_id, "step": "quiz", "count": len(quiz)})
         return StepOutput(content=json.dumps(quiz))
 
     except InputCheckError as e:
         msg = f"Quiz generation rejected by input guardrail: {e.check_trigger}"
-        logger.warning("[quiz_step] InputCheckError session_id=%s: %s", session_id, msg)
+        logger.warning("step error", extra={"session_id": session_id, "step": "quiz", "error": msg})
         session_state.setdefault("errors", {})["quiz"] = msg
         session_state["quiz"] = []
         return StepOutput(content="[]")
     except Exception as e:
         msg = str(e)
-        logger.warning("[quiz_step] non-fatal error session_id=%s: %s", session_id, msg)
+        logger.warning("step error", extra={"session_id": session_id, "step": "quiz", "error": msg})
         session_state.setdefault("errors", {})["quiz"] = msg
         session_state["quiz"] = []
         return StepOutput(content="[]")
@@ -433,14 +434,14 @@ def title_step(step_input: StepInput, session_state: dict) -> StepOutput:
     notes = session_state.get("notes", "")
     source_content = session_state.get("source_content", "")
 
-    logger.info("[title_step] start session_id=%s", session_id)
+    logger.info("step start", extra={"session_id": session_id, "step": "title"})
 
     try:
         title = _generate_title(source_content or notes, db=traces_db, session_id=session_id)
         if not title or len(title.strip()) < 3:
             raise RuntimeError("Title too short")
     except Exception as e:
-        logger.warning("[title_step] AI title failed, falling back: %s", e)
+        logger.warning("step error", extra={"session_id": session_id, "step": "title", "error": str(e)})
         try:
             title = _extract_title(notes) or "Study Session"
         except Exception:
@@ -448,7 +449,7 @@ def title_step(step_input: StepInput, session_state: dict) -> StepOutput:
 
     title = title.strip() or "Study Session"
     session_state["title"] = title
-    logger.info("[title_step] done session_id=%s title=%r", session_id, title)
+    logger.info("step done", extra={"session_id": session_id, "step": "title", "title": title})
     return StepOutput(content=title)
 
 
