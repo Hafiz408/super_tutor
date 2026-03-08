@@ -13,6 +13,8 @@ class SessionRequest(BaseModel):
     topic_description: Optional[str] = None
     tutoring_type: TutoringType
     focus_prompt: Optional[str] = None
+    generate_flashcards: bool = False
+    generate_quiz: bool = False
 
     model_config = {"str_strip_whitespace": True}
 
@@ -37,4 +39,5 @@ class SessionResult(BaseModel):
     notes: str               # markdown string
     flashcards: List[Flashcard]
     quiz: List[QuizQuestion]
+    chat_intro: str = ""
     errors: Optional[dict] = None  # per-section errors e.g. {"flashcards": "...", "quiz": "..."}

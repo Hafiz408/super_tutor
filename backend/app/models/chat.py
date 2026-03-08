@@ -9,9 +9,8 @@ class ChatMessage(BaseModel):
 
 class ChatStreamRequest(BaseModel):
     message: str
-    notes: str
     tutoring_type: Literal["micro_learning", "teaching_a_kid", "advanced"]
     history: list[ChatMessage] = []
-    session_id: str = ""  # TRAC-04: passed from frontend to tag chat traces per session
+    session_id: str  # required; router loads notes from SQLite using this ID
 
     model_config = {"str_strip_whitespace": True}
