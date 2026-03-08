@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -38,6 +38,7 @@ const TAB_ICONS: Record<Tab, React.ReactNode> = {
 
 export default function StudyPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
+  const router = useRouter();
 
   const [session, setSession] = useState<SessionResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -101,24 +102,53 @@ export default function StudyPage() {
     }
   }, [chatOpen]);
 
-  // Load session from localStorage
+  // Load session from localStorage, falling back to the backend for sessions
+  // whose SSE connection dropped before the complete event arrived.
   useEffect(() => {
-    const stored = localStorage.getItem(`session:${sessionId}`);
-    if (!stored) {
-      setError("Session not found on this device.");
+    async function loadSession() {
+      const stored = localStorage.getItem(`session:${sessionId}`);
+      if (stored) {
+        const data: SessionResult = JSON.parse(stored);
+        setSession(data);
+        setAnswers(new Array(data.quiz.length).fill(null));
+        saveSession({
+          session_id: data.session_id,
+          source_title: data.source_title,
+          tutoring_type: data.tutoring_type,
+          session_type: data.session_type ?? "url",
+        });
+        setLoading(false);
+        return;
+      }
+      // Not in localStorage — check the backend.
+      // 200 = complete, 202 = still in progress, 404 = not found
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/sessions/${sessionId}`);
+        if (res.status === 202) {
+          // Workflow is still running — redirect to loading page to poll for completion
+          router.replace(`/loading?session_id=${sessionId}`);
+          return;
+        }
+        if (res.ok) {
+          const data: SessionResult = await res.json();
+          localStorage.setItem(`session:${sessionId}`, JSON.stringify(data));
+          setSession(data);
+          setAnswers(new Array(data.quiz.length).fill(null));
+          saveSession({
+            session_id: data.session_id,
+            source_title: data.source_title,
+            tutoring_type: data.tutoring_type,
+            session_type: data.session_type ?? "url",
+          });
+        } else {
+          setError("Session not found. It may have expired or been created on another device.");
+        }
+      } catch {
+        setError("Session not found on this device.");
+      }
       setLoading(false);
-      return;
     }
-    const data: SessionResult = JSON.parse(stored);
-    setSession(data);
-    setAnswers(new Array(data.quiz.length).fill(null));
-    saveSession({
-      session_id: data.session_id,
-      source_title: data.source_title,
-      tutoring_type: data.tutoring_type,
-      session_type: data.session_type ?? "url",
-    });
-    setLoading(false);
+    loadSession();
   }, [sessionId]);
 
   // Persist a partial update back to localStorage and state
@@ -376,7 +406,7 @@ export default function StudyPage() {
                 <div className="flex flex-col gap-1">
                   <p className="text-xs font-medium text-amber-800">Sources used:</p>
                   <ul className="flex flex-col gap-0.5">
-                    {session.sources.map((src, i) => (
+                    {session.sources.filter((src) => /^https?:\/\//i.test(src)).map((src, i) => (
                       <li key={i}>
                         <a
                           href={src}

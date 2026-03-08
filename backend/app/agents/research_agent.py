@@ -36,19 +36,19 @@ def build_research_agent(db: SqliteDb | None = None) -> Agent:
         instructions="""You are a research assistant. When given a topic, perform web research and synthesize findings.
 
 Steps:
-1. Run 2-3 targeted Tavily searches on the topic using different query angles.
+1. Run 1-2 targeted Tavily searches on the topic using different query angles.
 2. Read and synthesize the results into a comprehensive content body of at least 600 words.
 3. Collect the source URLs from your searches.
 
 Return ONLY valid JSON with exactly two keys (no markdown fences, no explanation):
 {
   "content": "<synthesized research text, at least 600 words, written as educational prose>",
-  "sources": ["<url1>", "<url2>", "<url3>"]
+  "sources": ["<url1>", "<url2>"]
 }
 
 Rules:
 - content must be comprehensive educational prose covering the topic in depth
-- sources must be an array of 3-5 URL strings from your searches
+- sources must be an array of 1-2 URL strings from your searches
 - Return ONLY valid JSON, no markdown fences, no explanation""",
     )
 

@@ -3,6 +3,7 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { TutoringType, SessionRequest } from "@/types/session";
+import { useRecentSessions } from "@/app/hooks/useRecentSessions";
 
 type InputMode = "url" | "topic";
 
@@ -44,6 +45,8 @@ function CreateForm() {
   const [generateFlashcards, setGenerateFlashcards] = useState(false);
   const [generateQuiz, setGenerateQuiz] = useState(false);
 
+  const { saveSession } = useRecentSessions();
+
   const errorMessages = errorKind ? ERROR_MESSAGES[errorKind] ?? ERROR_MESSAGES.empty : null;
 
   async function handleSubmit(e: React.FormEvent) {
@@ -72,6 +75,16 @@ function CreateForm() {
       });
       if (!res.ok) throw new Error("Server error");
       const { session_id } = await res.json();
+      // Add to recent sessions immediately so the user can find it even if they navigate away
+      const tempTitle = inputMode === "topic"
+        ? topicDescription.trim().slice(0, 60)
+        : pasteText ? "Pasted text" : (url || "Article");
+      saveSession({
+        session_id,
+        source_title: tempTitle,
+        tutoring_type: selectedMode,
+        session_type: inputMode === "topic" ? "topic" : pasteText ? "paste" : "url",
+      });
       router.push(
         `/loading?session_id=${session_id}&tutoring_type=${selectedMode}&focus_prompt=${encodeURIComponent(focusPrompt)}&input_mode=${inputMode}&generate_flashcards=${generateFlashcards}&generate_quiz=${generateQuiz}`
       );
@@ -89,7 +102,7 @@ function CreateForm() {
         Create a study session
       </h1>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+<form onSubmit={handleSubmit} className="flex flex-col gap-6">
 
         {/* Tutoring mode cards */}
         <fieldset className="border-none p-0 m-0">
