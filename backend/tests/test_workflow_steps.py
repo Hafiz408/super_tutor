@@ -3,7 +3,7 @@ Unit tests for workflow step executors in session_workflow.py.
 
 Tests use unittest.mock to isolate steps from real agent calls and network I/O.
 Each test verifies behaviour described in the Task 3 (research_step), Task 4 (notes_step),
-Task 5 (flashcards_step), and Task 6 (quiz_step) implementation plans.
+Task 5 (flashcards_step), Task 6 (quiz_step), and Task 7 (title_step) implementation plans.
 
 Agno step executor signature: fn(step_input: StepInput, session_state: dict) -> StepOutput
 agno injects session_state by detecting the parameter name — it is a plain mutable dict.
@@ -820,3 +820,106 @@ class TestQuizStep:
         assert json.loads(output.content) == []
         assert session_state.get("quiz") == []
         assert "quiz" in session_state.get("errors", {})
+
+
+# ---------------------------------------------------------------------------
+# title_step — happy path and non-fatal fallback behaviour
+# ---------------------------------------------------------------------------
+
+class TestTitleStep:
+    def test_title_step_writes_title_to_session_state(self):
+        """Happy path: AI title is written to session_state['title']."""
+        session_state: dict = {
+            "notes": "# Quantum Mechanics\nWave-particle duality and the uncertainty principle.",
+            "source_content": "Detailed content about quantum mechanics. " * 10,
+        }
+        step_input = _make_step_input({
+            "session_id": "test-title-001",
+            "traces_db": None,
+        })
+
+        with patch(
+            "app.workflows.session_workflow._generate_title",
+            return_value="Quantum Mechanics Overview",
+        ):
+            from app.workflows.session_workflow import title_step
+            output = title_step(step_input, session_state)
+
+        assert session_state.get("title") == "Quantum Mechanics Overview"
+        assert isinstance(output, StepOutput)
+        assert output.content == "Quantum Mechanics Overview"
+
+    def test_title_step_falls_back_to_extract_title_on_ai_failure(self):
+        """If _generate_title raises, _extract_title(notes) is used as the title."""
+        notes = "# Neural Networks Explained\nContent about neural networks."
+        session_state: dict = {
+            "notes": notes,
+            "source_content": "Some source content.",
+        }
+        step_input = _make_step_input({
+            "session_id": "test-title-002",
+            "traces_db": None,
+        })
+
+        with patch(
+            "app.workflows.session_workflow._generate_title",
+            side_effect=RuntimeError("AI provider unavailable"),
+        ), patch(
+            "app.workflows.session_workflow._extract_title",
+            return_value="Neural Networks Explained",
+        ) as mock_extract:
+            from app.workflows.session_workflow import title_step
+            output = title_step(step_input, session_state)
+
+        mock_extract.assert_called_once_with(notes)
+        assert session_state.get("title") == "Neural Networks Explained"
+        assert isinstance(output, StepOutput)
+        assert output.content == "Neural Networks Explained"
+
+    def test_title_step_falls_back_to_generic_on_both_failures(self):
+        """If both _generate_title and _extract_title fail, title is 'Study Session'."""
+        session_state: dict = {
+            "notes": "Some notes content.",
+            "source_content": "",
+        }
+        step_input = _make_step_input({
+            "session_id": "test-title-003",
+            "traces_db": None,
+        })
+
+        with patch(
+            "app.workflows.session_workflow._generate_title",
+            side_effect=RuntimeError("AI failure"),
+        ), patch(
+            "app.workflows.session_workflow._extract_title",
+            return_value="",  # empty string is falsy — triggers generic fallback
+        ):
+            from app.workflows.session_workflow import title_step
+            output = title_step(step_input, session_state)
+
+        assert session_state.get("title") == "Study Session"
+        assert isinstance(output, StepOutput)
+        assert output.content == "Study Session"
+
+    def test_title_step_always_returns_step_output(self):
+        """title_step is non-fatal — it must always return StepOutput, never raise."""
+        session_state: dict = {}
+        step_input = _make_step_input({
+            "session_id": "test-title-004",
+        })
+
+        # Simulate both helpers failing with unexpected exceptions
+        with patch(
+            "app.workflows.session_workflow._generate_title",
+            side_effect=Exception("Catastrophic AI failure"),
+        ), patch(
+            "app.workflows.session_workflow._extract_title",
+            side_effect=Exception("Extract also exploded"),
+        ):
+            from app.workflows.session_workflow import title_step
+            output = title_step(step_input, session_state)
+
+        # Must not raise — always returns StepOutput
+        assert isinstance(output, StepOutput)
+        assert session_state.get("title") == "Study Session"
+        assert output.content == "Study Session"

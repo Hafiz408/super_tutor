@@ -414,6 +414,42 @@ def quiz_step(step_input: StepInput, session_state: dict) -> StepOutput:
 
 
 # ---------------------------------------------------------------------------
+# title_step executor
+# ---------------------------------------------------------------------------
+
+def title_step(step_input: StepInput, session_state: dict) -> StepOutput:
+    """
+    Generates a short session title (3-5 words).
+    Non-fatal: falls back to _extract_title(notes) on AI failure, then to a generic string.
+    Agno injects session_state by parameter name.
+
+    IMPORTANT: This function runs inside asyncio.to_thread — do NOT use await here.
+    """
+    session_id = step_input.additional_data.get("session_id", "")
+    traces_db = step_input.additional_data.get("db") or step_input.additional_data.get("traces_db")
+    notes = session_state.get("notes", "")
+    source_content = session_state.get("source_content", "")
+
+    logger.info("[title_step] start session_id=%s", session_id)
+
+    try:
+        title = _generate_title(source_content or notes, db=traces_db, session_id=session_id)
+        if not title or len(title.strip()) < 3:
+            raise RuntimeError("Title too short")
+    except Exception as e:
+        logger.warning("[title_step] AI title failed, falling back: %s", e)
+        try:
+            title = _extract_title(notes) or "Study Session"
+        except Exception:
+            title = "Study Session"
+
+    title = title.strip() or "Study Session"
+    session_state["title"] = title
+    logger.info("[title_step] done session_id=%s title=%r", session_id, title)
+    return StepOutput(content=title)
+
+
+# ---------------------------------------------------------------------------
 # Workflow factory
 # ---------------------------------------------------------------------------
 
