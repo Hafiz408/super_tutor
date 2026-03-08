@@ -2,7 +2,8 @@
 Unit tests for workflow step executors in session_workflow.py.
 
 Tests use unittest.mock to isolate steps from real agent calls and network I/O.
-Each test verifies behaviour described in the Task 3 (research_step), Task 4 (notes_step), and Task 5 (flashcards_step) implementation plans.
+Each test verifies behaviour described in the Task 3 (research_step), Task 4 (notes_step),
+Task 5 (flashcards_step), and Task 6 (quiz_step) implementation plans.
 
 Agno step executor signature: fn(step_input: StepInput, session_state: dict) -> StepOutput
 agno injects session_state by detecting the parameter name — it is a plain mutable dict.
@@ -667,3 +668,155 @@ class TestFlashcardsStep:
         assert json.loads(output.content) == []
         assert session_state.get("flashcards") == []
         assert "flashcards" in session_state.get("errors", {})
+
+
+# ---------------------------------------------------------------------------
+# quiz_step — happy path and non-fatal error handling
+# ---------------------------------------------------------------------------
+
+GOOD_QUIZ = json.dumps([
+    {
+        "question": "What is photosynthesis?",
+        "options": ["Option A", "Option B", "Option C", "Option D"],
+        "answer_index": 0,
+    },
+    {
+        "question": "What is mitosis?",
+        "options": ["Option A", "Option B", "Option C", "Option D"],
+        "answer_index": 2,
+    },
+])
+
+
+class TestQuizStep:
+    def test_quiz_step_writes_quiz_to_session_state(self):
+        """Happy path: valid JSON array written to session_state['quiz']."""
+        source_content = "Q" * 300
+        session_state: dict = {"source_content": source_content}
+        step_input = _make_step_input({
+            "session_id": "test-quiz-001",
+            "tutoring_type": "advanced",
+        })
+        fake_result = _make_fake_result(GOOD_QUIZ)
+        mock_agent = MagicMock()
+
+        with patch(
+            "app.workflows.session_workflow.build_quiz_agent",
+            return_value=mock_agent,
+        ), patch(
+            "app.workflows.session_workflow.run_with_retry",
+            return_value=fake_result,
+        ):
+            from app.workflows.session_workflow import quiz_step
+            output = quiz_step(step_input, session_state)
+
+        assert "quiz" in session_state, "session_state must contain 'quiz'"
+        assert isinstance(session_state["quiz"], list)
+        assert len(session_state["quiz"]) == 2
+        assert session_state["quiz"][0]["question"] == "What is photosynthesis?"
+        assert isinstance(output, StepOutput)
+        assert json.loads(output.content) == session_state["quiz"]
+
+    def test_quiz_step_handles_json_parse_error_non_fatally(self):
+        """If JSON parse fails, writes error to errors dict and returns empty list."""
+        source_content = "R" * 300
+        session_state: dict = {"source_content": source_content}
+        step_input = _make_step_input({
+            "session_id": "test-quiz-002",
+            "tutoring_type": "advanced",
+        })
+        # Agent returns malformed JSON
+        fake_result = _make_fake_result("this is not valid JSON {{{")
+        mock_agent = MagicMock()
+
+        with patch(
+            "app.workflows.session_workflow.build_quiz_agent",
+            return_value=mock_agent,
+        ), patch(
+            "app.workflows.session_workflow.run_with_retry",
+            return_value=fake_result,
+        ):
+            from app.workflows.session_workflow import quiz_step
+            output = quiz_step(step_input, session_state)
+
+        # Must not raise — non-fatal
+        assert isinstance(output, StepOutput)
+        assert json.loads(output.content) == []
+        assert session_state.get("quiz") == []
+        assert "quiz" in session_state.get("errors", {})
+
+    def test_quiz_step_handles_empty_output_non_fatally(self):
+        """If agent returns empty output, writes error and continues."""
+        source_content = "S" * 300
+        session_state: dict = {"source_content": source_content}
+        step_input = _make_step_input({
+            "session_id": "test-quiz-003",
+            "tutoring_type": "advanced",
+        })
+        # Agent returns empty content
+        fake_result = _make_fake_result("")
+        mock_agent = MagicMock()
+
+        with patch(
+            "app.workflows.session_workflow.build_quiz_agent",
+            return_value=mock_agent,
+        ), patch(
+            "app.workflows.session_workflow.run_with_retry",
+            return_value=fake_result,
+        ):
+            from app.workflows.session_workflow import quiz_step
+            output = quiz_step(step_input, session_state)
+
+        assert isinstance(output, StepOutput)
+        assert json.loads(output.content) == []
+        assert session_state.get("quiz") == []
+        assert "quiz" in session_state.get("errors", {})
+
+    def test_quiz_step_writes_to_errors_dict_on_failure(self):
+        """On any failure, session_state['errors']['quiz'] is set."""
+        source_content = "T" * 300
+        session_state: dict = {"source_content": source_content}
+        step_input = _make_step_input({
+            "session_id": "test-quiz-004",
+            "tutoring_type": "advanced",
+        })
+        mock_agent = MagicMock()
+
+        with patch(
+            "app.workflows.session_workflow.build_quiz_agent",
+            return_value=mock_agent,
+        ), patch(
+            "app.workflows.session_workflow.run_with_retry",
+            side_effect=RuntimeError("Simulated quiz agent crash"),
+        ):
+            from app.workflows.session_workflow import quiz_step
+            output = quiz_step(step_input, session_state)
+
+        # Step must not raise
+        assert isinstance(output, StepOutput)
+        errors = session_state.get("errors", {})
+        assert "quiz" in errors, "errors['quiz'] must be set on failure"
+        assert "Simulated quiz agent crash" in errors["quiz"]
+
+    def test_quiz_step_returns_empty_list_when_no_source_content(self):
+        """If source_content is missing from session_state, returns [] non-fatally."""
+        session_state: dict = {}  # no source_content
+        step_input = _make_step_input({
+            "session_id": "test-quiz-005",
+            "tutoring_type": "advanced",
+        })
+
+        with patch(
+            "app.workflows.session_workflow.build_quiz_agent",
+            return_value=MagicMock(),
+        ), patch(
+            "app.workflows.session_workflow.run_with_retry",
+            return_value=_make_fake_result(GOOD_QUIZ),
+        ):
+            from app.workflows.session_workflow import quiz_step
+            output = quiz_step(step_input, session_state)
+
+        assert isinstance(output, StepOutput)
+        assert json.loads(output.content) == []
+        assert session_state.get("quiz") == []
+        assert "quiz" in session_state.get("errors", {})

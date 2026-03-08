@@ -23,6 +23,7 @@ from agno.db.sqlite import SqliteDb
 from agno.agent import Agent
 
 from app.agents.flashcard_agent import build_flashcard_agent
+from app.agents.quiz_agent import build_quiz_agent
 from app.agents.model_factory import get_model
 from app.agents.notes_agent import build_notes_agent
 from app.agents.personas import CHAT_INTROS
@@ -346,6 +347,69 @@ def flashcards_step(step_input: StepInput, session_state: dict) -> StepOutput:
         logger.warning("[flashcards_step] non-fatal error session_id=%s: %s", session_id, msg)
         session_state.setdefault("errors", {})["flashcards"] = msg
         session_state["flashcards"] = []
+        return StepOutput(content="[]")
+
+
+# ---------------------------------------------------------------------------
+# quiz_step executor
+# ---------------------------------------------------------------------------
+
+def quiz_step(step_input: StepInput, session_state: dict) -> StepOutput:
+    """
+    Generates quiz questions from source_content in session_state.
+    Non-fatal: failures write to session_state["errors"]["quiz"] and return empty list.
+    Agno injects session_state by parameter name.
+
+    IMPORTANT: This function runs inside asyncio.to_thread — do NOT use await here.
+    """
+    settings = get_settings()
+
+    session_id = step_input.additional_data.get("session_id", "")
+    traces_db = step_input.additional_data.get("db") or step_input.additional_data.get("traces_db")
+    tutoring_type = step_input.additional_data.get("tutoring_type", "advanced")
+    source_content = session_state.get("source_content", "")
+
+    logger.info("[quiz_step] start session_id=%s", session_id)
+
+    try:
+        if not source_content:
+            raise RuntimeError("No source_content in session_state for quiz_step")
+
+        agent = build_quiz_agent(tutoring_type=tutoring_type, db=traces_db)
+        result = run_with_retry(
+            agent.run,
+            source_content,
+            max_attempts=settings.agent_max_retries,
+            session_id=session_id,
+        )
+
+        if not result or not result.content:
+            raise RuntimeError("QuizAgent returned empty output")
+
+        # Parse JSON — strip markdown fences first
+        raw = result.content.strip()
+        raw = re.sub(r"^```(?:json)?\s*", "", raw)
+        raw = re.sub(r"\s*```$", "", raw)
+        quiz = json.loads(raw)
+
+        if not isinstance(quiz, list):
+            raise ValueError("QuizAgent output is not a JSON array")
+
+        session_state["quiz"] = quiz
+        logger.info("[quiz_step] done session_id=%s count=%d", session_id, len(quiz))
+        return StepOutput(content=json.dumps(quiz))
+
+    except InputCheckError as e:
+        msg = f"Quiz generation rejected by input guardrail: {e.check_trigger}"
+        logger.warning("[quiz_step] InputCheckError session_id=%s: %s", session_id, msg)
+        session_state.setdefault("errors", {})["quiz"] = msg
+        session_state["quiz"] = []
+        return StepOutput(content="[]")
+    except Exception as e:
+        msg = str(e)
+        logger.warning("[quiz_step] non-fatal error session_id=%s: %s", session_id, msg)
+        session_state.setdefault("errors", {})["quiz"] = msg
+        session_state["quiz"] = []
         return StepOutput(content="[]")
 
 
