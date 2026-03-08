@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-03-07 after v4.0 milestone start)
 Phase: 8 of 10 (Storage and Workflow Foundation)
 Plan: 2 of TBD
 Status: In progress
-Last activity: 2026-03-07 - Completed quick task 16: add prompt injection and output guardrails to the agents
+Last activity: 2026-03-08 - Completed quick task 18: add structured logging to backend for debugging
 
 Progress: [███████░░░░░░░░░░░░░] 35% (7/10 phases complete across all milestones)
 
@@ -74,10 +74,11 @@ None.
 |---|-------------|------|--------|-----------|
 | 16 | add prompt injection and output guardrails to the agents | 2026-03-07 | dcad322 | [16-add-prompt-injection-and-output-guardrai](./quick/16-add-prompt-injection-and-output-guardrai/) |
 | 17 | remove docs/ from git tracking | 2026-03-08 | 560b971 | [17-remove-docs-from-git-tracking](./quick/17-remove-docs-from-git-tracking/) |
+| 18 | add structured logging to backend for debugging | 2026-03-08 | 61ece75 | [18-add-structured-logging-to-backend-for-de](./quick/18-add-structured-logging-to-backend-for-de/) |
 
 ## Session Continuity
 
 Last session: 2026-03-08
-Stopped at: Completed quick task 17: remove docs/ from git tracking
+Stopped at: Completed quick task 18: add structured logging to backend for debugging
 Resume file: None
 Next step: /gsd:execute-phase 08 (plan 03, if exists) or /gsd:execute-phase 09
