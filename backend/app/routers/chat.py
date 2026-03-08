@@ -2,12 +2,13 @@ import json
 import logging
 from typing import AsyncGenerator
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from sse_starlette.sse import EventSourceResponse
 
 from app.models.chat import ChatStreamRequest
 from app.agents.chat_agent import build_chat_agent, build_chat_messages
 from app.config import get_settings
+from app.workflows.session_workflow import build_session_workflow, _get_session_db
 from agno.db.sqlite import SqliteDb
 
 logger = logging.getLogger("super_tutor.chat")
@@ -31,7 +32,8 @@ def _get_traces_db() -> SqliteDb:
 @router.post("/stream")
 async def chat_stream(request: ChatStreamRequest):
     """
-    Accept: JSON body with message, notes, tutoring_type, history (list of {role, content}).
+    Accept: JSON body with message, tutoring_type, history (list of {role, content}), session_id.
+    Notes are loaded from SQLite session state via session_id (not accepted in the request body).
     Return: SSE stream of {"event": "token", "data": {"token": "..."}} chunks,
             terminated by {"event": "done"}.
 
@@ -41,7 +43,22 @@ async def chat_stream(request: ChatStreamRequest):
     CRITICAL: Uses agent.arun(stream=True) — a native async generator.
     Do NOT use asyncio.to_thread here (RESEARCH.md Pitfall 1: breaks streaming).
     """
-    agent = build_chat_agent(request.tutoring_type, request.notes, db=_get_traces_db())
+    # Load notes from SQLite session state — authoritative source, not client-supplied
+    wf = build_session_workflow(session_id=request.session_id, session_db=_get_session_db())
+    session = wf.get_session(session_id=request.session_id)
+    if session is None or not session.session_state:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Session '{request.session_id}' not found. Please create a new session.",
+        )
+    notes = session.session_state.get("notes", "")
+    if not notes:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Session '{request.session_id}' has no notes. Please create a new session.",
+        )
+
+    agent = build_chat_agent(request.tutoring_type, notes, db=_get_traces_db())
     messages = build_chat_messages(
         [m.model_dump() for m in request.history],
         request.message,
