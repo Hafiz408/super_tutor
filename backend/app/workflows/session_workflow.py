@@ -24,6 +24,7 @@ from agno.agent import Agent
 
 from app.agents.model_factory import get_model
 from app.agents.notes_agent import build_notes_agent
+from app.agents.research_agent import build_research_agent
 from app.config import get_settings
 from app.utils.retry import run_with_retry
 
@@ -136,6 +137,75 @@ def _parse_json_safe(raw: str, fallback: list) -> list:
         return json.loads(cleaned)
     except (json.JSONDecodeError, ValueError):
         return fallback
+
+
+# ---------------------------------------------------------------------------
+# research_step executor
+# ---------------------------------------------------------------------------
+
+def research_step(step_input: StepInput, session_state: dict) -> StepOutput:
+    """
+    Runs ResearchAgent for topic-mode sessions.
+    Writes source_content and sources to session_state.
+    Fatal: raises RuntimeError on any failure.
+
+    IMPORTANT: This function runs inside asyncio.to_thread — do NOT use await here.
+    """
+    settings = get_settings()
+
+    topic_description = step_input.additional_data.get("topic_description", "")
+    session_id = step_input.additional_data.get("session_id", "")
+    traces_db = step_input.additional_data.get("db") or step_input.additional_data.get("traces_db")
+
+    agent = build_research_agent(db=traces_db)
+
+    logger.info("Workflow step start — step=research topic=%r", topic_description[:80])
+    _t = time.perf_counter()
+    try:
+        result = run_with_retry(
+            agent.run,
+            topic_description,
+            max_attempts=settings.agent_max_retries,
+            session_id=session_id,
+        )
+    except InputCheckError as e:
+        logger.warning("Prompt injection blocked in research_step — trigger=%s", e.check_trigger)
+        raise RuntimeError(
+            "Research topic rejected by input guardrail. If this is unexpected, try rephrasing your topic."
+        ) from e
+    logger.info("Workflow step done — step=research elapsed=%.2fs", time.perf_counter() - _t)
+
+    if not result or not result.content:
+        raise RuntimeError("ResearchAgent returned empty content")
+
+    # The ResearchAgent instructs the model to return JSON {content, sources}.
+    # Strip markdown fences and attempt to parse; fall back to treating the
+    # entire output as prose with no sources (matches research_agent._parse_json_safe).
+    import re as _re
+    raw = result.content
+    cleaned = _re.sub(r"```(?:json)?\s*", "", raw).strip()
+    cleaned = _re.sub(r"```\s*$", "", cleaned).strip()
+    try:
+        parsed = json.loads(cleaned)
+        source_content = parsed.get("content", "")
+        sources = parsed.get("sources", [])
+        if not isinstance(sources, list):
+            sources = []
+        sources = [s for s in sources if isinstance(s, str)]
+    except (json.JSONDecodeError, ValueError, AttributeError):
+        source_content = raw
+        sources = []
+
+    if len(source_content) < 100:
+        raise RuntimeError(
+            f"ResearchAgent returned insufficient content — got {len(source_content)} chars. Please try again."
+        )
+
+    # Write to session_state — agno persists to SQLite in finally block
+    session_state["source_content"] = source_content
+    session_state["sources"] = sources
+
+    return StepOutput(content=source_content)
 
 
 # ---------------------------------------------------------------------------
