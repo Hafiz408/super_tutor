@@ -5,7 +5,8 @@ Uses agno.workflow.Workflow + Step (composition, not subclassing).
 The notes_step executor writes to session_state so agno's finally-block
 save_session() automatically persists session data to SQLite.
 
-SSE stream behavior is preserved end-to-end via run_session_workflow().
+Background execution is handled by run_workflow_background(), called from
+the async pipeline task in sessions.py after content extraction.
 """
 import asyncio
 import json
@@ -13,8 +14,6 @@ import logging
 import os
 import re
 import time
-from dataclasses import dataclass, field
-from typing import AsyncGenerator, Any
 
 from agno.exceptions import InputCheckError
 from agno.workflow import Workflow, Step
@@ -32,17 +31,6 @@ from app.config import get_settings
 from app.utils.retry import run_with_retry
 
 logger = logging.getLogger("super_tutor.workflow")
-
-
-# ---------------------------------------------------------------------------
-# RunResponse — minimal SSE-compatible response object (unchanged)
-# ---------------------------------------------------------------------------
-
-@dataclass
-class RunResponse:
-    """Minimal response object compatible with the SSE endpoint's event loop."""
-    content: Any = None
-    event: str = "workflow_running"
 
 
 # ---------------------------------------------------------------------------
@@ -163,7 +151,7 @@ def research_step(step_input: StepInput, session_state: dict) -> StepOutput:
 
     agent = build_research_agent(db=traces_db)
 
-    logger.info("step start", extra={"session_id": session_id, "step": "research", "topic": topic_description[:80]})
+    logger.info("research step start — topic=%.80s", topic_description, extra={"session_id": session_id, "step": "research"})
     _t = time.perf_counter()
     try:
         result = run_with_retry(
@@ -177,7 +165,7 @@ def research_step(step_input: StepInput, session_state: dict) -> StepOutput:
         raise RuntimeError(
             "Research topic rejected by input guardrail. If this is unexpected, try rephrasing your topic."
         ) from e
-    logger.info("step done", extra={"session_id": session_id, "step": "research", "elapsed": round(time.perf_counter() - _t, 3)})
+    logger.info("research step done — elapsed=%.3fs", time.perf_counter() - _t, extra={"session_id": session_id, "step": "research"})
 
     if not result or not result.content:
         raise RuntimeError("ResearchAgent returned empty content")
@@ -260,7 +248,7 @@ def notes_step(step_input: StepInput, session_state: dict) -> StepOutput:
     )
 
     notes_agent = build_notes_agent(tutoring_type, db=traces_db)
-    logger.info("step start", extra={"session_id": session_id, "step": "notes", "tutoring_type": tutoring_type})
+    logger.info("notes step start — tutoring_type=%s", tutoring_type, extra={"session_id": session_id, "step": "notes"})
     _t = time.perf_counter()
     try:
         notes_result = run_with_retry(
@@ -274,9 +262,12 @@ def notes_step(step_input: StepInput, session_state: dict) -> StepOutput:
         raise RuntimeError(
             "Content rejected by input guardrail. If this is unexpected, try rephrasing your input."
         ) from e
-    logger.info("step done", extra={"session_id": session_id, "step": "notes", "elapsed": round(time.perf_counter() - _t, 3)})
+    logger.info("notes step done — elapsed=%.3fs", time.perf_counter() - _t, extra={"session_id": session_id, "step": "notes"})
 
     notes = notes_result.content or ""
+    # Detect provider error JSON stored as content (agno may swallow 429s and return error JSON)
+    if '"rate_limit_exceeded"' in notes or (notes.strip().startswith('{"error":') and '"message"' in notes):
+        raise RuntimeError(f"rate_limit_exceeded: {notes[:500]}")
     if len(notes.strip()) < 100:
         raise RuntimeError(
             f"Notes generation failed — model returned: {notes.strip()!r}. Please try again."
@@ -313,7 +304,7 @@ def flashcards_step(step_input: StepInput, session_state: dict) -> StepOutput:
     tutoring_type = data.get("tutoring_type", "advanced")
     source_content = session_state.get("source_content", "")
 
-    logger.info("step start", extra={"session_id": session_id, "step": "flashcards"})
+    logger.info("flashcards step start", extra={"session_id": session_id, "step": "flashcards"})
 
     try:
         if not source_content:
@@ -340,18 +331,18 @@ def flashcards_step(step_input: StepInput, session_state: dict) -> StepOutput:
             raise ValueError("FlashcardAgent output is not a JSON array")
 
         session_state["flashcards"] = flashcards
-        logger.info("step done", extra={"session_id": session_id, "step": "flashcards", "count": len(flashcards)})
+        logger.info("flashcards step done — count=%d", len(flashcards), extra={"session_id": session_id, "step": "flashcards"})
         return StepOutput(content=json.dumps(flashcards))
 
     except InputCheckError as e:
         msg = f"Flashcard generation rejected by input guardrail: {e.check_trigger}"
-        logger.warning("step error", extra={"session_id": session_id, "step": "flashcards", "error": msg})
+        logger.warning("flashcards step error — %s", msg, extra={"session_id": session_id, "step": "flashcards"})
         session_state.setdefault("errors", {})["flashcards"] = msg
         session_state["flashcards"] = []
         return StepOutput(content="[]")
     except Exception as e:
         msg = str(e)
-        logger.warning("step error", extra={"session_id": session_id, "step": "flashcards", "error": msg})
+        logger.warning("flashcards step error — %s", msg, extra={"session_id": session_id, "step": "flashcards"})
         session_state.setdefault("errors", {})["flashcards"] = msg
         session_state["flashcards"] = []
         return StepOutput(content="[]")
@@ -377,7 +368,7 @@ def quiz_step(step_input: StepInput, session_state: dict) -> StepOutput:
     tutoring_type = data.get("tutoring_type", "advanced")
     source_content = session_state.get("source_content", "")
 
-    logger.info("step start", extra={"session_id": session_id, "step": "quiz"})
+    logger.info("quiz step start", extra={"session_id": session_id, "step": "quiz"})
 
     try:
         if not source_content:
@@ -404,18 +395,18 @@ def quiz_step(step_input: StepInput, session_state: dict) -> StepOutput:
             raise ValueError("QuizAgent output is not a JSON array")
 
         session_state["quiz"] = quiz
-        logger.info("step done", extra={"session_id": session_id, "step": "quiz", "count": len(quiz)})
+        logger.info("quiz step done — count=%d", len(quiz), extra={"session_id": session_id, "step": "quiz"})
         return StepOutput(content=json.dumps(quiz))
 
     except InputCheckError as e:
         msg = f"Quiz generation rejected by input guardrail: {e.check_trigger}"
-        logger.warning("step error", extra={"session_id": session_id, "step": "quiz", "error": msg})
+        logger.warning("quiz step error — %s", msg, extra={"session_id": session_id, "step": "quiz"})
         session_state.setdefault("errors", {})["quiz"] = msg
         session_state["quiz"] = []
         return StepOutput(content="[]")
     except Exception as e:
         msg = str(e)
-        logger.warning("step error", extra={"session_id": session_id, "step": "quiz", "error": msg})
+        logger.warning("quiz step error — %s", msg, extra={"session_id": session_id, "step": "quiz"})
         session_state.setdefault("errors", {})["quiz"] = msg
         session_state["quiz"] = []
         return StepOutput(content="[]")
@@ -439,14 +430,14 @@ def title_step(step_input: StepInput, session_state: dict) -> StepOutput:
     notes = session_state.get("notes", "")
     source_content = session_state.get("source_content", "")
 
-    logger.info("step start", extra={"session_id": session_id, "step": "title"})
+    logger.info("title step start", extra={"session_id": session_id, "step": "title"})
 
     try:
         title = _generate_title(source_content or notes, db=traces_db, session_id=session_id)
         if not title or len(title.strip()) < 3:
             raise RuntimeError("Title too short")
     except Exception as e:
-        logger.warning("step error", extra={"session_id": session_id, "step": "title", "error": str(e)})
+        logger.warning("title step error — %s", e, extra={"session_id": session_id, "step": "title"})
         try:
             title = _extract_title(notes) or "Study Session"
         except Exception:
@@ -454,7 +445,7 @@ def title_step(step_input: StepInput, session_state: dict) -> StepOutput:
 
     title = title.strip() or "Study Session"
     session_state["title"] = title
-    logger.info("step done", extra={"session_id": session_id, "step": "title", "title": title})
+    logger.info("title step done — title=%r", title, extra={"session_id": session_id, "step": "title"})
     return StepOutput(content=title)
 
 
@@ -477,12 +468,16 @@ def build_session_workflow(
     """
     steps = []
     if session_type == "topic":
-        steps.append(Step(name="research", executor=research_step))
-    steps.append(Step(name="notes", executor=notes_step))
+        # on_error="fail": research failure must propagate so we classify it correctly
+        steps.append(Step(name="research", executor=research_step, on_error="fail"))
+    # on_error="fail": notes failure is fatal — session is useless without notes
+    steps.append(Step(name="notes", executor=notes_step, on_error="fail"))
     if generate_flashcards:
+        # flashcards/quiz are optional — skip on error (non-fatal)
         steps.append(Step(name="flashcards", executor=flashcards_step))
     if generate_quiz:
         steps.append(Step(name="quiz", executor=quiz_step))
+    # title falls back internally — skip on error is fine
     steps.append(Step(name="title", executor=title_step))
 
     return Workflow(
@@ -495,35 +490,36 @@ def build_session_workflow(
 
 
 # ---------------------------------------------------------------------------
-# Async generator for SSE (called from router)
+# Background workflow runner (called from sessions.py pipeline task)
 # ---------------------------------------------------------------------------
 
-async def run_session_workflow(
+async def run_workflow_background(
     session_id: str,
-    session_type: str,            # "topic" | "url" | "paste"
-    source_content: str,          # pre-extracted content (url/paste paths); "" for topic
-    topic_description: str,       # raw topic string (topic path); "" for url/paste
+    session_type: str,       # "topic" | "url" | "paste"
+    source_content: str,     # pre-extracted content; "" for topic sessions
+    topic_description: str,  # raw topic string; "" for url/paste
     tutoring_type: str,
     focus_prompt: str = "",
     generate_flashcards: bool = False,
     generate_quiz: bool = False,
     traces_db: SqliteDb | None = None,
-) -> AsyncGenerator[RunResponse, None]:
+) -> None:
     """
-    Async generator yielding RunResponse objects for the SSE router.
-    Yields upfront progress messages, then runs the workflow in a thread,
-    then yields a workflow_completed RunResponse with full session data.
+    Runs the agno workflow in a thread and updates session_status on completion.
+    Called from the background pipeline task in sessions.py after content extraction.
+
+    IMPORTANT: This is called from asyncio.create_task() — never re-raise here.
+    All outcomes (success and failure) are written to session_status.db.
     """
-    # Emit predicted progress messages before the thread starts (asyncio.to_thread
-    # is blocking — we can't yield from inside it).
-    if session_type == "topic":
-        yield RunResponse(content="Researching your topic...")
-    yield RunResponse(content="Crafting your notes...")
-    if generate_flashcards:
-        yield RunResponse(content="Creating flashcards...")
-    if generate_quiz:
-        yield RunResponse(content="Building quiz questions...")
-    yield RunResponse(content="Generating title...")
+    from app.utils.session_status import update_session_status
+    from app.utils.retry import is_retryable
+
+    logger.debug(
+        "Workflow start — session_id=%s session_type=%s tutoring_type=%s"
+        " flashcards=%s quiz=%s content_chars=%d",
+        session_id, session_type, tutoring_type,
+        generate_flashcards, generate_quiz, len(source_content),
+    )
 
     workflow = build_session_workflow(
         session_id=session_id,
@@ -533,47 +529,46 @@ async def run_session_workflow(
         generate_quiz=generate_quiz,
     )
 
-    await asyncio.to_thread(
-        workflow.run,
-        additional_data={
-            "session_id": session_id,
-            "session_type": session_type,
-            "source_content": source_content,
-            "topic_description": topic_description,
-            "tutoring_type": tutoring_type,
-            "focus_prompt": focus_prompt,
-            "generate_flashcards": generate_flashcards,
-            "generate_quiz": generate_quiz,
-            "traces_db": traces_db,
-        },
-        session_id=session_id,
-    )
+    try:
+        await asyncio.to_thread(
+            workflow.run,
+            additional_data={
+                "session_id": session_id,
+                "session_type": session_type,
+                "source_content": source_content,
+                "topic_description": topic_description,
+                "tutoring_type": tutoring_type,
+                "focus_prompt": focus_prompt,
+                "generate_flashcards": generate_flashcards,
+                "generate_quiz": generate_quiz,
+                "traces_db": traces_db,
+            },
+            session_id=session_id,
+        )
 
-    # Read final state from in-memory workflow.session_state (already persisted to SQLite)
-    state = workflow.session_state or {}
-    notes = state.get("notes", "")
-    flashcards = state.get("flashcards", [])
-    quiz = state.get("quiz", [])
-    title = state.get("title", "Study Session")
-    sources = state.get("sources", [])
-    chat_intro = state.get("chat_intro", "")
-    errors = state.get("errors") or {}
+        state = workflow.get_session_state(session_id=session_id)
+        notes = state.get("notes", "")
+        if not notes:
+            logger.error(
+                "Workflow completed but notes empty — session_id=%s state_keys=%s",
+                session_id, list(state.keys()),
+            )
+            update_session_status(
+                session_id, "failed", "empty",
+                "Workflow completed but produced no notes. Please try again.",
+            )
+            return
 
-    # Emit non-fatal step errors as warnings so the frontend can surface them
-    for key, msg in errors.items():
-        yield RunResponse(event="warning", content=f"{key}: {msg}")
+        logger.info(
+            "Workflow complete — session_id=%s title=%r notes_chars=%d",
+            session_id, state.get("title"), len(notes),
+        )
+        update_session_status(session_id, "complete")
 
-    yield RunResponse(
-        event="workflow_completed",
-        content={
-            "source_title": title,
-            "tutoring_type": tutoring_type,
-            "session_type": session_type,
-            "sources": sources,
-            "notes": notes,
-            "flashcards": flashcards,
-            "quiz": quiz,
-            "chat_intro": chat_intro,
-            "errors": errors or None,
-        },
-    )
+    except Exception as e:
+        error_kind = "rate_limit" if is_retryable(e) else "workflow_error"
+        logger.error(
+            "Workflow failed — session_id=%s error_kind=%s",
+            session_id, error_kind, exc_info=True,
+        )
+        update_session_status(session_id, "failed", error_kind, str(e))

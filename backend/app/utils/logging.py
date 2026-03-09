@@ -101,6 +101,10 @@ def configure_logging(level: int = logging.INFO) -> None:
 
     logging.basicConfig(level=level, handlers=[handler], force=True)
 
+    # Set super_tutor.* loggers to DEBUG for detailed operational visibility.
+    # Third-party loggers stay at WARNING to keep output readable.
+    logging.getLogger("super_tutor").setLevel(logging.DEBUG)
+
     # Silence noisy third-party loggers
     for noisy in ("uvicorn.access", "httpx", "httpcore"):
         logging.getLogger(noisy).setLevel(logging.WARNING)

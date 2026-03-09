@@ -36,54 +36,47 @@ export interface SessionResult {
   errors?: Record<string, string>; // per-section errors e.g. { flashcards: "...", quiz: "..." }
 }
 
-// SSE event shapes from the backend stream
-export interface ProgressEvent {
-  message: string;
-}
+// ---------------------------------------------------------------------------
+// Poll response shapes from GET /sessions/{id}
+// ---------------------------------------------------------------------------
 
-// CompleteEvent is now the full session payload — the backend sends all data in one shot.
-export type CompleteEvent = SessionResult;
+export type SessionPollResponse =
+  | { status: "pending" }
+  | { status: "failed"; error_kind: string; error_message: string }
+  | ({ status: "complete" } & SessionResult);
 
-export interface ErrorEvent {
-  kind: "paywall" | "invalid_url" | "empty" | "unreachable";
-}
+// ---------------------------------------------------------------------------
+// Progress step messages shown while polling (same order as workflow steps)
+// ---------------------------------------------------------------------------
 
-// Base SSE steps — URL/paste paths
-export const SSE_STEPS_BASE = [
+const BASE_STEPS_URL = [
   "Reading the article...",
   "Crafting your notes...",
   "Generating title...",
 ] as const;
 
-// Topic path base steps
-export const TOPIC_SSE_STEPS_BASE = [
+const BASE_STEPS_TOPIC = [
   "Researching your topic...",
   "Crafting your notes...",
   "Generating title...",
 ] as const;
 
-// Legacy aliases kept for backward compat with loading page
-export const SSE_STEPS = SSE_STEPS_BASE;
-export const TOPIC_SSE_STEPS = TOPIC_SSE_STEPS_BASE;
-
-// Optional steps appended when the user opted in
 export const FLASHCARD_STEP = "Creating flashcards..." as const;
 export const QUIZ_STEP = "Building quiz questions..." as const;
 
 /**
- * Build the ordered list of expected SSE progress messages for the loading page.
- * Mirrors the server-side run_session_workflow progress emission order.
+ * Build the ordered list of progress messages for the loading page.
+ * Mirrors the server-side workflow step order.
  */
-export function buildExpectedSteps(
+export function buildProgressSteps(
   inputMode: "url" | "topic" | "paste",
   generateFlashcards: boolean,
   generateQuiz: boolean,
 ): string[] {
   const base = inputMode === "topic"
-    ? [...TOPIC_SSE_STEPS_BASE]
-    : [...SSE_STEPS_BASE];
+    ? [...BASE_STEPS_TOPIC]
+    : [...BASE_STEPS_URL];
 
-  // Insert optional steps before "Generating title..."
   const titleIndex = base.indexOf("Generating title...");
   const extras: string[] = [];
   if (generateFlashcards) extras.push(FLASHCARD_STEP);
@@ -96,6 +89,5 @@ export function buildExpectedSteps(
   ];
 }
 
-export interface WarningEvent {
-  message: string;
-}
+// Legacy alias — keeps any existing imports working
+export const buildExpectedSteps = buildProgressSteps;

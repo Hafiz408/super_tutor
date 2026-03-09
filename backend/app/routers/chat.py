@@ -43,15 +43,22 @@ async def chat_stream(request: ChatStreamRequest):
     CRITICAL: Uses agent.arun(stream=True) — a native async generator.
     Do NOT use asyncio.to_thread here (RESEARCH.md Pitfall 1: breaks streaming).
     """
-    # Load notes from SQLite session state — authoritative source, not client-supplied
-    wf = build_session_workflow(session_id=request.session_id, session_db=_get_session_db())
-    session = wf.get_session(session_id=request.session_id)
-    if session is None or not session.session_state:
+    # Load notes from SQLite session state — authoritative source, not client-supplied.
+    try:
+        wf = build_session_workflow(session_id=request.session_id, session_db=_get_session_db())
+        session = wf.get_session(session_id=request.session_id)
+    except Exception as e:
+        logger.error("Failed to load session for chat — session_id=%s error=%s", request.session_id, e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to load session data. Please try again.")
+
+    # session_data is the top-level dict; session_state is nested inside it
+    session_state = (session.session_data or {}).get("session_state", {}) if session else {}
+    if not session or not session_state:
         raise HTTPException(
             status_code=404,
             detail=f"Session '{request.session_id}' not found. Please create a new session.",
         )
-    notes = session.session_state.get("notes", "")
+    notes = session_state.get("notes", "")
     if not notes:
         raise HTTPException(
             status_code=404,

@@ -35,14 +35,20 @@ def get_model():
 
 
 def get_fallback_model():
-    """Return a model object for the configured fallback model, or None if unset."""
+    """Return a model object for the configured fallback model, or None if unset.
+
+    Supports a different provider than the primary via AGENT_FALLBACK_PROVIDER
+    and AGENT_FALLBACK_API_KEY. Falls back to primary provider/key if not set.
+    """
     settings = get_settings()
     if not settings.agent_fallback_model:
         return None
 
-    provider = settings.agent_provider.lower()
+    # Use fallback provider if explicitly configured, otherwise reuse primary provider
+    provider = (settings.agent_fallback_provider or settings.agent_provider).lower()
     model_id = settings.agent_fallback_model
-    api_key = settings.agent_api_key
+    # Use fallback API key if provided (different provider may need different key)
+    api_key = settings.agent_fallback_api_key or settings.agent_api_key
 
     if provider == "anthropic":
         from agno.models.anthropic import Claude

@@ -285,7 +285,8 @@ function CreateForm() {
             !selectedMode ||
             isSubmitting ||
             (pasteText.length > 0 && pasteText.length < 200) ||
-            (inputMode === "topic" && !pasteText && topicDescription.length < 10)
+            (inputMode === "topic" && !pasteText && topicDescription.length < 10) ||
+            (inputMode === "url" && !pasteText && !url.trim())
           }
         >
           {isSubmitting ? "Starting..." : "Generate my study session →"}

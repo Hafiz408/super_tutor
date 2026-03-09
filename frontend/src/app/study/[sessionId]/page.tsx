@@ -102,8 +102,7 @@ export default function StudyPage() {
     }
   }, [chatOpen]);
 
-  // Load session from localStorage, falling back to the backend for sessions
-  // whose SSE connection dropped before the complete event arrived.
+  // Load session from localStorage, falling back to the backend when not cached.
   useEffect(() => {
     async function loadSession() {
       const stored = localStorage.getItem(`session:${sessionId}`);
@@ -120,17 +119,31 @@ export default function StudyPage() {
         setLoading(false);
         return;
       }
-      // Not in localStorage — check the backend.
-      // 200 = complete, 202 = still in progress, 404 = not found
+      // Not in localStorage — check the backend poll endpoint.
+      // { status: "pending" }  → redirect to loading page
+      // { status: "complete" } → use data directly
+      // { status: "failed" }   → show error
+      // 404                    → session not found
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/sessions/${sessionId}`);
-        if (res.status === 202) {
-          // Workflow is still running — redirect to loading page to poll for completion
+        if (!res.ok) {
+          setError("Session not found. It may have expired or been created on another device.");
+          setLoading(false);
+          return;
+        }
+        const payload = await res.json();
+        if (payload.status === "pending") {
+          // Workflow still running — redirect to loading page to continue polling
           router.replace(`/loading?session_id=${sessionId}`);
           return;
         }
-        if (res.ok) {
-          const data: SessionResult = await res.json();
+        if (payload.status === "failed") {
+          setError("Session generation failed. Please create a new session.");
+          setLoading(false);
+          return;
+        }
+        if (payload.status === "complete") {
+          const { status: _s, ...data } = payload as { status: string } & SessionResult;
           localStorage.setItem(`session:${sessionId}`, JSON.stringify(data));
           setSession(data);
           setAnswers(new Array(data.quiz.length).fill(null));

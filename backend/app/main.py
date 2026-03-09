@@ -1,6 +1,9 @@
 import logging
 from contextlib import asynccontextmanager
 
+from dotenv import load_dotenv
+load_dotenv()  # Export .env vars into os.environ before any tool/client constructors run
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.utils.logging import configure_logging
@@ -88,7 +91,7 @@ def _wrap_with_agentos(fastapi_app: FastAPI) -> FastAPI:
     )
     session_workflow = build_session_workflow(
         session_id="playground",
-        session_db=_get_session_db(),
+        session_db=traces_db,  # use traces_db so this placeholder appears in AgentOS "Workflows"
         session_type="topic",
         generate_flashcards=True,
         generate_quiz=True,
