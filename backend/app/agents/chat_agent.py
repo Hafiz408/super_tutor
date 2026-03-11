@@ -28,8 +28,6 @@ Answer ONLY from the session material. If the student's question is not covered 
 material, respond: "I can only answer about this session's material."
 Do not use outside knowledge under any circumstances.
 
-# TODO: truncate notes if > 3000 tokens (current notes are compressed, safe for MVP)
-
 --- SESSION MATERIAL ---
 {notes}
 --- END MATERIAL ---""",

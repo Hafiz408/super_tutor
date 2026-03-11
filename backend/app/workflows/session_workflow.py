@@ -30,7 +30,6 @@ from app.agents.notes_agent import build_notes_agent
 from app.agents.personas import CHAT_INTROS
 from app.agents.research_agent import build_research_agent
 from app.config import get_settings
-from app.utils.retry import run_with_retry
 
 logger = logging.getLogger("super_tutor.workflow")
 
@@ -97,7 +96,7 @@ def _is_valid_title(title: str) -> bool:
     return True
 
 
-def _generate_title(text: str, fallback: str = "", db: SqliteDb | None = None, session_id: str = "") -> str:
+def _generate_title(text: str, fallback: str = "", db: SqliteDb | None = None) -> str:
     """Ask the AI for a concise 3-5 word title. Falls back to fallback (truncated) or _extract_title on failure."""
     agent = Agent(
         model=get_model(),
@@ -109,7 +108,7 @@ def _generate_title(text: str, fallback: str = "", db: SqliteDb | None = None, s
     )
     try:
         logger.debug("Title generation start")
-        result = run_with_retry(agent.run, text[:800], session_id=session_id)
+        result = agent.run(text[:800])
         title = (result.content or "").strip().strip('"').strip("'")
         if title and _is_valid_title(title):
             logger.debug("Title generation done — title=%r", title)
@@ -144,7 +143,6 @@ def research_step(step_input: StepInput, session_state: dict) -> StepOutput:
 
     IMPORTANT: This function runs inside asyncio.to_thread — do NOT use await here.
     """
-    settings = get_settings()
     data = step_input.additional_data or {}
 
     topic_description = data.get("topic_description", "") or (step_input.get_input_as_string() or "")
@@ -156,12 +154,7 @@ def research_step(step_input: StepInput, session_state: dict) -> StepOutput:
     logger.info("research step start — topic=%.80s", topic_description, extra={"session_id": session_id, "step": "research"})
     _t = time.perf_counter()
     try:
-        result = run_with_retry(
-            agent.run,
-            topic_description,
-            max_attempts=settings.agent_max_retries,
-            session_id=session_id,
-        )
+        result = agent.run(topic_description)
     except InputCheckError as e:
         logger.warning("Prompt injection blocked in research_step — trigger=%s", e.check_trigger)
         raise RuntimeError(
@@ -215,7 +208,6 @@ def notes_step(step_input: StepInput, session_state: dict) -> StepOutput:
 
     IMPORTANT: This function runs inside asyncio.to_thread — do NOT use await here.
     """
-    settings = get_settings()
     data = step_input.additional_data or {}
 
     tutoring_type = data.get("tutoring_type", "advanced")
@@ -253,12 +245,7 @@ def notes_step(step_input: StepInput, session_state: dict) -> StepOutput:
     logger.info("notes step start — tutoring_type=%s", tutoring_type, extra={"session_id": session_id, "step": "notes"})
     _t = time.perf_counter()
     try:
-        notes_result = run_with_retry(
-            notes_agent.run,
-            input_text,
-            max_attempts=settings.agent_max_retries,
-            session_id=session_id,
-        )
+        notes_result = notes_agent.run(input_text)
     except InputCheckError as e:
         logger.warning("Prompt injection blocked in notes_step — trigger=%s", e.check_trigger)
         raise RuntimeError(
@@ -298,8 +285,6 @@ def flashcards_step(step_input: StepInput, session_state: dict) -> StepOutput:
 
     IMPORTANT: This function runs inside asyncio.to_thread — do NOT use await here.
     """
-    settings = get_settings()
-
     data = step_input.additional_data or {}
     session_id = data.get("session_id", "")
     traces_db = data.get("db") or data.get("traces_db")
@@ -315,12 +300,7 @@ def flashcards_step(step_input: StepInput, session_state: dict) -> StepOutput:
             raise RuntimeError("No source_content in session_state for flashcards_step")
 
         agent = build_flashcard_agent(tutoring_type=tutoring_type, db=traces_db)
-        result = run_with_retry(
-            agent.run,
-            source_content,
-            max_attempts=settings.agent_max_retries,
-            session_id=session_id,
-        )
+        result = agent.run(source_content)
 
         if not result or not result.content:
             raise RuntimeError("FlashcardAgent returned empty output")
@@ -364,8 +344,6 @@ def quiz_step(step_input: StepInput, session_state: dict) -> StepOutput:
 
     IMPORTANT: This function runs inside asyncio.to_thread — do NOT use await here.
     """
-    settings = get_settings()
-
     data = step_input.additional_data or {}
     session_id = data.get("session_id", "")
     traces_db = data.get("db") or data.get("traces_db")
@@ -381,12 +359,7 @@ def quiz_step(step_input: StepInput, session_state: dict) -> StepOutput:
             raise RuntimeError("No source_content in session_state for quiz_step")
 
         agent = build_quiz_agent(tutoring_type=tutoring_type, db=traces_db)
-        result = run_with_retry(
-            agent.run,
-            source_content,
-            max_attempts=settings.agent_max_retries,
-            session_id=session_id,
-        )
+        result = agent.run(source_content)
 
         if not result or not result.content:
             raise RuntimeError("QuizAgent returned empty output")
@@ -439,7 +412,7 @@ def title_step(step_input: StepInput, session_state: dict) -> StepOutput:
     logger.info("title step start", extra={"session_id": session_id, "step": "title"})
 
     try:
-        title = _generate_title(source_content or notes, db=traces_db, session_id=session_id)
+        title = _generate_title(source_content or notes, db=traces_db)
         if not title or len(title.strip()) < 3:
             raise RuntimeError("Title too short")
     except Exception as e:
@@ -506,6 +479,9 @@ def build_session_workflow(
     Calling with only session_id + session_db creates a workflow suitable for
     session lookups (conditions simply won't fire without additional_data).
     """
+    settings = get_settings()
+    step_retries = settings.agent_max_retries
+
     return Workflow(
         id="session-workflow",   # stable id — becomes workflow_id in DB rows
         name="Session Workflow",
@@ -514,21 +490,21 @@ def build_session_workflow(
                 name="research",
                 description="Run research agent only for topic-type sessions",
                 evaluator=_is_topic_session,
-                steps=[Step(name="research", executor=research_step, on_error="fail")],
+                steps=[Step(name="research", executor=research_step, on_error="fail", max_retries=step_retries)],
             ),
             Parallel(
-                Step(name="notes", executor=notes_step, on_error="fail"),
+                Step(name="notes", executor=notes_step, on_error="fail", max_retries=step_retries),
                 Condition(
                     name="flashcards",
                     description="Generate flashcards if opted in",
                     evaluator=_wants_flashcards,
-                    steps=[Step(name="flashcards", executor=flashcards_step)],
+                    steps=[Step(name="flashcards", executor=flashcards_step, max_retries=step_retries)],
                 ),
                 Condition(
                     name="quiz",
                     description="Generate quiz if opted in",
                     evaluator=_wants_quiz,
-                    steps=[Step(name="quiz", executor=quiz_step)],
+                    steps=[Step(name="quiz", executor=quiz_step, max_retries=step_retries)],
                 ),
                 name="content_generation",
                 description="Generate notes, flashcards, and quiz concurrently",

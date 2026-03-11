@@ -17,7 +17,6 @@ from app.workflows.session_workflow import (
 from app.agents.flashcard_agent import build_flashcard_agent
 from app.agents.quiz_agent import build_quiz_agent
 from app.config import get_settings
-from app.utils.retry import run_with_retry
 from app.utils.session_status import (
     create_session_status,
     update_session_status,
@@ -288,14 +287,9 @@ async def regenerate_section(session_id: str, section: str, body: RegenerateRequ
         section, session_id, body.tutoring_type,
     )
 
-    settings = get_settings()
     if section == "flashcards":
         agent = build_flashcard_agent(body.tutoring_type, db=_get_traces_db())
-        result = await asyncio.to_thread(
-            run_with_retry, agent.run, input_text,
-            max_attempts=settings.agent_max_retries,
-            session_id=session_id,
-        )
+        result = await asyncio.to_thread(agent.run, input_text)
         new_items = _parse_json_safe(result.content or "[]", [])
         if not new_items:
             raise HTTPException(status_code=500, detail="Generation returned empty response")
@@ -307,11 +301,7 @@ async def regenerate_section(session_id: str, section: str, body: RegenerateRequ
 
     else:
         agent = build_quiz_agent(body.tutoring_type, db=_get_traces_db())
-        result = await asyncio.to_thread(
-            run_with_retry, agent.run, input_text,
-            max_attempts=settings.agent_max_retries,
-            session_id=session_id,
-        )
+        result = await asyncio.to_thread(agent.run, input_text)
         new_items = _parse_json_safe(result.content or "[]", [])
         if not new_items:
             raise HTTPException(status_code=500, detail="Generation returned empty response")
