@@ -17,6 +17,8 @@ import time
 
 from agno.exceptions import InputCheckError
 from agno.workflow import Workflow, Step
+from agno.workflow.condition import Condition
+from agno.workflow.parallel import Parallel
 from agno.workflow.types import StepInput, StepOutput
 from agno.db.sqlite import SqliteDb
 from agno.agent import Agent
@@ -302,7 +304,9 @@ def flashcards_step(step_input: StepInput, session_state: dict) -> StepOutput:
     session_id = data.get("session_id", "")
     traces_db = data.get("db") or data.get("traces_db")
     tutoring_type = data.get("tutoring_type", "advanced")
-    source_content = session_state.get("source_content", "")
+    # Prefer session_state (set by research_step for topic sessions); fall back to
+    # additional_data for url/paste sessions where notes_step may run in parallel.
+    source_content = session_state.get("source_content", "") or data.get("source_content", "")
 
     logger.info("flashcards step start", extra={"session_id": session_id, "step": "flashcards"})
 
@@ -366,7 +370,9 @@ def quiz_step(step_input: StepInput, session_state: dict) -> StepOutput:
     session_id = data.get("session_id", "")
     traces_db = data.get("db") or data.get("traces_db")
     tutoring_type = data.get("tutoring_type", "advanced")
-    source_content = session_state.get("source_content", "")
+    # Prefer session_state (set by research_step for topic sessions); fall back to
+    # additional_data for url/paste sessions where notes_step may run in parallel.
+    source_content = session_state.get("source_content", "") or data.get("source_content", "")
 
     logger.info("quiz step start", extra={"session_id": session_id, "step": "quiz"})
 
@@ -450,6 +456,28 @@ def title_step(step_input: StepInput, session_state: dict) -> StepOutput:
 
 
 # ---------------------------------------------------------------------------
+# Condition evaluators
+# ---------------------------------------------------------------------------
+
+def _is_topic_session(step_input: StepInput) -> bool:
+    """Return True for topic-type sessions that need the research step."""
+    data = step_input.additional_data or {}
+    return data.get("session_type") == "topic"
+
+
+def _wants_flashcards(step_input: StepInput) -> bool:
+    """Return True if flashcard generation was opted in."""
+    data = step_input.additional_data or {}
+    return bool(data.get("generate_flashcards", False))
+
+
+def _wants_quiz(step_input: StepInput) -> bool:
+    """Return True if quiz generation was opted in."""
+    data = step_input.additional_data or {}
+    return bool(data.get("generate_quiz", False))
+
+
+# ---------------------------------------------------------------------------
 # Workflow factory
 # ---------------------------------------------------------------------------
 
@@ -462,28 +490,51 @@ def build_session_workflow(
 ) -> Workflow:
     """
     Per-request factory. Never reuse across requests.
-    Builds a conditional step list based on session_type and opt-in flags.
-    Calling with only session_id + session_db (e.g. from _guard_session) creates a
-    minimal workflow suitable for get_session() lookups.
-    """
-    steps = []
-    if session_type == "topic":
-        # on_error="fail": research failure must propagate so we classify it correctly
-        steps.append(Step(name="research", executor=research_step, on_error="fail"))
-    # on_error="fail": notes failure is fatal — session is useless without notes
-    steps.append(Step(name="notes", executor=notes_step, on_error="fail"))
-    if generate_flashcards:
-        # flashcards/quiz are optional — skip on error (non-fatal)
-        steps.append(Step(name="flashcards", executor=flashcards_step))
-    if generate_quiz:
-        steps.append(Step(name="quiz", executor=quiz_step))
-    # title falls back internally — skip on error is fine
-    steps.append(Step(name="title", executor=title_step))
 
+    Pipeline:
+        research (Condition: topic sessions only)
+        → Parallel(
+            notes (always, fatal on error),
+            flashcards (Condition: if opted in, non-fatal),
+            quiz (Condition: if opted in, non-fatal),
+          )
+        → title (non-fatal, falls back internally)
+
+    The session_type / generate_flashcards / generate_quiz params are retained
+    for API compatibility — runtime branching is handled by Condition evaluators
+    that read the same values from additional_data at execution time.
+    Calling with only session_id + session_db creates a workflow suitable for
+    session lookups (conditions simply won't fire without additional_data).
+    """
     return Workflow(
         id="session-workflow",   # stable id — becomes workflow_id in DB rows
         name="Session Workflow",
-        steps=steps,
+        steps=[
+            Condition(
+                name="research",
+                description="Run research agent only for topic-type sessions",
+                evaluator=_is_topic_session,
+                steps=[Step(name="research", executor=research_step, on_error="fail")],
+            ),
+            Parallel(
+                Step(name="notes", executor=notes_step, on_error="fail"),
+                Condition(
+                    name="flashcards",
+                    description="Generate flashcards if opted in",
+                    evaluator=_wants_flashcards,
+                    steps=[Step(name="flashcards", executor=flashcards_step)],
+                ),
+                Condition(
+                    name="quiz",
+                    description="Generate quiz if opted in",
+                    evaluator=_wants_quiz,
+                    steps=[Step(name="quiz", executor=quiz_step)],
+                ),
+                name="content_generation",
+                description="Generate notes, flashcards, and quiz concurrently",
+            ),
+            Step(name="title", executor=title_step),
+        ],
         db=session_db,
         session_id=session_id,
     )
