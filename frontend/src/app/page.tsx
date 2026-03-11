@@ -21,7 +21,7 @@ const FEATURES = [
 ];
 
 export default function LandingPage() {
-  const { sessions } = useRecentSessions();
+  const { sessions, removeSession } = useRecentSessions();
 
   return (
     <main>
@@ -75,18 +75,28 @@ export default function LandingPage() {
           </h2>
           <div className="flex flex-col gap-2">
             {sessions.map((s) => (
-              <Link
-                key={s.session_id}
-                href={`/study/${s.session_id}`}
-                className="flex items-center justify-between px-4 py-3 border border-zinc-200 rounded-xl bg-white hover:border-zinc-300 hover:bg-zinc-50 transition-colors group"
-              >
-                <span className="text-sm font-medium text-zinc-900 truncate max-w-[70%]">
-                  {s.source_title}
-                </span>
-                <span className="text-xs text-zinc-400 shrink-0 ml-3">
-                  {new Date(s.saved_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                </span>
-              </Link>
+              <div key={s.session_id} className="group relative flex items-center border border-zinc-200 rounded-xl bg-white hover:border-zinc-300 hover:bg-zinc-50 transition-colors">
+                <Link
+                  href={`/study/${s.session_id}`}
+                  className="flex flex-1 items-center justify-between px-4 py-3 min-w-0"
+                >
+                  <span className="text-sm font-medium text-zinc-900 truncate max-w-[70%]">
+                    {s.source_title}
+                  </span>
+                  <span className="text-xs text-zinc-400 shrink-0 ml-3">
+                    {new Date(s.saved_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                  </span>
+                </Link>
+                <button
+                  onClick={() => removeSession(s.session_id)}
+                  aria-label="Discard session"
+                  className="shrink-0 mr-2 p-1.5 rounded-lg text-zinc-300 hover:text-zinc-600 hover:bg-zinc-100 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
             ))}
           </div>
         </section>

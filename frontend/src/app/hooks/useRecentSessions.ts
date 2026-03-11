@@ -61,5 +61,18 @@ export function useRecentSessions() {
     }
   }, []);
 
-  return { sessions, saveSession, evictionToast };
+  const removeSession = useCallback((session_id: string) => {
+    const updated = readFromStorage().filter((s) => s.session_id !== session_id);
+    writeToStorage(updated);
+    setSessions(updated);
+    // Clean up cached session detail and chat history
+    try {
+      localStorage.removeItem(`session:${session_id}`);
+      localStorage.removeItem(`chat:${session_id}`);
+    } catch {
+      // Ignore storage errors
+    }
+  }, []);
+
+  return { sessions, saveSession, removeSession, evictionToast };
 }
