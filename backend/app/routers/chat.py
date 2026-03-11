@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 from sse_starlette.sse import EventSourceResponse
 
 from app.models.chat import ChatStreamRequest
-from app.agents.chat_agent import build_chat_agent, build_chat_messages
+from app.agents.chat_agent import build_chat_agent
 from app.config import get_settings
 from app.workflows.session_workflow import build_session_workflow
 from agno.db.sqlite import SqliteDb
@@ -65,20 +65,21 @@ async def chat_stream(request: ChatStreamRequest):
             detail=f"Session '{request.session_id}' has no notes. Please create a new session.",
         )
 
+    # Namespace the chat session_id to avoid colliding with the workflow session row.
+    # agno_sessions uses session_id as primary key — sharing the same id would cause
+    # the chat agent to overwrite the workflow's session_data (which holds the notes).
+    chat_session_id = f"chat:{request.session_id}"
+
     agent = build_chat_agent(request.tutoring_type, notes, db=_get_traces_db())
-    messages = build_chat_messages(
-        [m.model_dump() for m in request.history],
-        request.message,
-    )
 
     logger.info(
         "Chat stream start",
-        extra={"session_id": request.session_id, "tutoring_type": request.tutoring_type, "history_turns": len(request.history)},
+        extra={"session_id": request.session_id, "tutoring_type": request.tutoring_type},
     )
 
     async def event_generator() -> AsyncGenerator[dict, None]:
         try:
-            async for chunk in agent.arun(messages, stream=True, session_id=request.session_id):
+            async for chunk in agent.arun(request.message, stream=True, session_id=chat_session_id):
                 # RunEvent.run_content == "RunContent" (str enum from agno/run/agent.py)
                 # Only yield content events — filter out RunStarted, ToolCallStarted, etc.
                 if chunk.event == "RunContent" and chunk.content:
@@ -86,10 +87,10 @@ async def chat_stream(request: ChatStreamRequest):
                         "event": "token",
                         "data": json.dumps({"token": chunk.content}),
                     }
-            if request.session_id:
+            if chat_session_id:
                 try:
                     await agent.aset_session_name(
-                        session_id=request.session_id,
+                        session_id=chat_session_id,
                         session_name=request.message,
                     )
                 except Exception as e:
@@ -98,11 +99,6 @@ async def chat_stream(request: ChatStreamRequest):
             yield {"event": "done", "data": json.dumps({})}
         except Exception as e:
             logger.error("Chat stream error: %s", e, exc_info=True, extra={"session_id": request.session_id})
-            from app.utils.retry import is_retryable
-            if is_retryable(e):
-                user_message = "The AI is temporarily busy — please try again in a moment."
-            else:
-                user_message = "Something went wrong. Please try again."
-            yield {"event": "error", "data": json.dumps({"error": user_message})}
+            yield {"event": "error", "data": json.dumps({"error": "Something went wrong. Please try again."})}
 
     return EventSourceResponse(event_generator())

@@ -539,7 +539,6 @@ async def run_workflow_background(
     All outcomes (success and failure) are written to session_status.db.
     """
     from app.utils.session_status import update_session_status
-    from app.utils.retry import is_retryable
 
     logger.debug(
         "Workflow start — session_id=%s session_type=%s tutoring_type=%s"
@@ -593,9 +592,5 @@ async def run_workflow_background(
         update_session_status(session_id, "complete")
 
     except Exception as e:
-        error_kind = "rate_limit" if is_retryable(e) else "workflow_error"
-        logger.error(
-            "Workflow failed — session_id=%s error_kind=%s",
-            session_id, error_kind, exc_info=True,
-        )
-        update_session_status(session_id, "failed", error_kind, str(e))
+        logger.error("Workflow failed — session_id=%s", session_id, exc_info=True)
+        update_session_status(session_id, "failed", "workflow_error", str(e))
