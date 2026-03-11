@@ -77,9 +77,15 @@ async def chat_stream(request: ChatStreamRequest):
         extra={"session_id": request.session_id, "tutoring_type": request.tutoring_type},
     )
 
+    session_title = session_state.get("title") or request.message
+
     async def event_generator() -> AsyncGenerator[dict, None]:
         try:
+            run_errored = False
             async for chunk in agent.arun(request.message, stream=True, session_id=chat_session_id):
+                if chunk.event == "RunError":
+                    run_errored = True
+                    break
                 # RunEvent.run_content == "RunContent" (str enum from agno/run/agent.py)
                 # Only yield content events — filter out RunStarted, ToolCallStarted, etc.
                 if chunk.event == "RunContent" and chunk.content:
@@ -87,14 +93,19 @@ async def chat_stream(request: ChatStreamRequest):
                         "event": "token",
                         "data": json.dumps({"token": chunk.content}),
                     }
-            if chat_session_id:
-                try:
-                    await agent.aset_session_name(
-                        session_id=chat_session_id,
-                        session_name=request.message,
-                    )
-                except Exception as e:
-                    logger.warning("Could not set session name: %s", e)
+
+            if run_errored:
+                logger.warning("Chat run error event received", extra={"session_id": request.session_id})
+                yield {"event": "error", "data": json.dumps({"error": "Something went wrong. Please try again."})}
+                return
+
+            try:
+                await agent.aset_session_name(
+                    session_id=chat_session_id,
+                    session_name=session_title,
+                )
+            except Exception as e:
+                logger.warning("Could not set session name: %s", e)
             logger.info("Chat stream done", extra={"session_id": request.session_id})
             yield {"event": "done", "data": json.dumps({})}
         except Exception as e:

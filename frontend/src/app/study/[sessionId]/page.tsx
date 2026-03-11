@@ -293,6 +293,15 @@ export default function StudyPage() {
                 }
                 return next;
               });
+            } else if (typeof parsed.error === "string") {
+              setChatHistory((prev) => {
+                const next = [...prev];
+                const last = next[next.length - 1];
+                if (last && last.role === "assistant") {
+                  next[next.length - 1] = { ...last, content: parsed.error };
+                }
+                return next;
+              });
             }
           } catch {
             // Ignore non-JSON data lines (e.g. event: done line)

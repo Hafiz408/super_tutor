@@ -585,9 +585,15 @@ async def run_workflow_background(
             )
             return
 
+        title = state.get("title") or session_id
+        try:
+            workflow.set_session_name(session_id=session_id, session_name=title)
+        except Exception as e:
+            logger.warning("Could not set workflow session name: %s", e)
+
         logger.info(
             "Workflow complete — session_id=%s title=%r notes_chars=%d",
-            session_id, state.get("title"), len(notes),
+            session_id, title, len(notes),
         )
         update_session_status(session_id, "complete")
 
