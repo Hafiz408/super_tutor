@@ -2,6 +2,10 @@
 
 **AI-powered study companion** — turn any article URL, pasted text, or topic description into structured study notes, interactive flashcards, and a quiz, tailored to your learning style.
 
+#### Links : 
+- Frontend : https://super-tutor.vercel.app/
+- Backend : https://super-tutor.onrender.com
+
 ---
 
 ## What It Does
