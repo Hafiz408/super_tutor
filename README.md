@@ -1,6 +1,8 @@
 # Super Tutor
 
-**AI-powered study companion** — turn any article URL, pasted text, or topic description into structured study notes, interactive flashcards, and a quiz, tailored to your learning style.
+**AI-powered study companion** — turn any article URL, pasted text, or topic description into structured study notes, interactive flashcards, a quiz, and a grounded chat tutor — all tailored to your learning style.
+
+Super Tutor is a full-stack agentic application built on [Agno](https://app.agno.com). You feed it any source of knowledge and it spins up a complete study session: persona-adapted notes, on-demand flashcards and quizzes, and a session-scoped chat agent that answers questions strictly from the material — no hallucinated outside knowledge. Conversation history is persisted to SQLite so the chat tutor remembers earlier questions across browser refreshes.
 
 #### Links :
 - Frontend : https://super-tutor.vercel.app/
@@ -11,10 +13,10 @@
 ## What It Does
 
 1. You provide a **URL**, **pasted text**, or a **topic to research**
-2. The backend extracts content (or researches the topic via web search)
-3. An AI notes agent produces comprehensive study notes
-4. On demand, flashcard and quiz agents generate interactive study materials
-5. A grounded chat agent lets you ask questions about the session content
+2. The backend extracts content (or researches the topic via Tavily web search)
+3. A **Notes Agent** produces comprehensive, persona-adapted study notes
+4. On demand, a **Flashcard Agent** and **Quiz Agent** generate interactive study materials
+5. A **Chat Agent** lets you ask questions about the session — grounded strictly in the session material, with full conversation memory persisted across refreshes
 
 ---
 
@@ -112,6 +114,26 @@ POST /sessions/{id}/regenerate/quiz
 ```
 
 Both use the stored notes + tutoring type to produce persona-adapted content.
+
+---
+
+## In-Session Chat Agent
+
+The **ChatAgent** is a persistent tutoring assistant scoped to a single study session.
+
+```
+POST /chat/stream   → Server-Sent Events stream of the assistant reply
+```
+
+Key properties:
+
+| Property | Behaviour |
+|----------|-----------|
+| **Grounded** | Answers only from the session's generated notes; refuses out-of-scope questions |
+| **Persona-adapted** | Inherits the same tutoring mode (Micro / Kid / Advanced) as the rest of the session |
+| **Persistent memory** | Conversation history stored in SQLite and replayed on every request — the agent remembers the full prior dialogue even after a page refresh |
+| **Stateless construction** | A fresh agent object is built per request; the DB provides continuity, so no server-side session state is needed |
+| **Guardrailed** | Same prompt-injection pre-hook and substantive-output post-hook as all other agents |
 
 ---
 
