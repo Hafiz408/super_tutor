@@ -2,7 +2,7 @@
 
 **AI-powered study companion** — turn any article URL, pasted text, or topic description into structured study notes, interactive flashcards, and a quiz, tailored to your learning style.
 
-#### Links : 
+#### Links :
 - Frontend : https://super-tutor.vercel.app/
 - Backend : https://super-tutor.onrender.com
 
@@ -27,7 +27,7 @@
 └───────────────────────────┬─────────────────────────────┘
                             │ HTTP / SSE
 ┌───────────────────────────▼─────────────────────────────┐
-│                   FastAPI Backend (Agno)                  │
+│              FastAPI Backend (Agno + AgentOS)             │
 │                                                          │
 │  ┌──────────────┐    ┌──────────────┐                   │
 │  │ /sessions    │    │ /chat/stream │                   │
@@ -45,6 +45,11 @@
 │  │  OpenAI / Anthropic /        │                        │
 │  │  Groq / OpenRouter           │                        │
 │  └──────────────────────────────┘                        │
+│                                                          │
+│  ┌──────────────────────────────────────────────────┐    │
+│  │  AgentOS (app.agno.com)                          │    │
+│  │  SQLite traces · Workflow session state          │    │
+│  └──────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -121,6 +126,16 @@ Every agent has two guardrails applied via Agno hooks:
 
 ---
 
+## Observability
+
+The FastAPI app is wrapped with **AgentOS** at startup:
+
+- All five agents are registered for visibility in the [AgentOS playground UI](https://app.agno.com)
+- Agent run traces are written to SQLite (`TRACE_DB_PATH`) via the `db=` parameter injected at call time
+- Session lifecycle state (pending / complete / failed) is stored in a separate SQLite file (`STATUS_DB_PATH`)
+
+---
+
 ## Monorepo Structure
 
 ```
@@ -146,6 +161,7 @@ super_tutor/
 │       ├── types/session.ts                # Shared TypeScript types
 │       └── app/hooks/useRecentSessions.ts  # Recent sessions hook
 │
+├── docker-compose.yml  # Local full-stack dev environment
 └── README.md
 ```
 
@@ -159,7 +175,18 @@ super_tutor/
 - API key for your chosen AI provider
 - *(Optional)* Tavily API key for topic-based research sessions
 
-### Backend
+### Option A — Docker Compose
+
+```bash
+# Create backend/.env first (see environment variables below), then:
+docker compose up
+```
+
+Frontend at `http://localhost:3000`, backend at `http://localhost:8000`.
+
+### Option B — Manual
+
+#### Backend
 
 ```bash
 cd backend
@@ -177,7 +204,7 @@ EOF
 uvicorn app.main:app --reload --port 8000
 ```
 
-### Frontend
+#### Frontend
 
 ```bash
 cd frontend
@@ -198,6 +225,24 @@ Open `http://localhost:3000`.
 | Anthropic | `anthropic` | `claude-3-5-sonnet-20241022` |
 | Groq | `groq` | `llama-3.3-70b-versatile` |
 | OpenRouter | `openrouter` | `openai/gpt-4o` |
+
+---
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AGENT_PROVIDER` | `openai` | AI provider (`openai` / `anthropic` / `groq` / `openrouter`) |
+| `AGENT_MODEL` | `gpt-4o` | Model ID for the chosen provider |
+| `AGENT_API_KEY` | *(required)* | API key for the provider |
+| `AGENT_FALLBACK_PROVIDER` | `""` | Optional fallback provider on retry |
+| `AGENT_FALLBACK_MODEL` | `""` | Optional fallback model ID on retry |
+| `AGENT_FALLBACK_API_KEY` | `""` | API key for fallback provider (defaults to `AGENT_API_KEY`) |
+| `AGENT_MAX_RETRIES` | `3` | Max retry attempts per agent call |
+| `TRACE_DB_PATH` | `tmp/super_tutor_traces.db` | SQLite path for AgentOS traces + workflow state |
+| `STATUS_DB_PATH` | `tmp/session_status.db` | SQLite path for session lifecycle status |
+| `ALLOWED_ORIGINS` | `http://localhost:3000` | CORS origins (comma-separated or JSON array) |
+| `TAVILY_API_KEY` | *(optional)* | Required for topic-mode research sessions |
 
 ---
 
