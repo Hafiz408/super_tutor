@@ -188,7 +188,7 @@ export default function StudyPage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ notes: session.notes, tutoring_type: session.tutoring_type }),
+          body: JSON.stringify({ tutoring_type: session.tutoring_type }),
         }
       );
       if (!res.ok) throw new Error("Generation failed");
@@ -211,7 +211,7 @@ export default function StudyPage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ notes: session.notes, tutoring_type: session.tutoring_type }),
+          body: JSON.stringify({ tutoring_type: session.tutoring_type }),
         }
       );
       if (!res.ok) throw new Error("Generation failed");
