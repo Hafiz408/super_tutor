@@ -10,12 +10,15 @@ class TestUnicodeNormalization:
         assert result == "file"
 
     def test_nfkc_fancy_quotes(self):
-        """Unicode fancy quotes should be normalised via NFKC."""
+        """NFKC normalisation runs without error; fancy quotes pass through (NFKC preserves them)."""
+        # Note: NFKC normalises ligatures and compatibility chars but fancy quotes (U+201C/U+201D)
+        # are canonical Unicode and remain unchanged. The key check is that extraction doesn't crash
+        # and the content (including surrounding text) is returned intact.
         result = clean_extracted_content("\u201chello\u201d", source_type="document")
-        # NFKC normalises fancy quotes to ASCII double-quotes
-        assert "\u201c" not in result
-        assert "\u201d" not in result
         assert "hello" in result
+        # Verify NFKC ran: a ligature alongside it would be resolved
+        result2 = clean_extracted_content("\u201c\ufb01le\u201d", source_type="document")
+        assert "file" in result2  # ﬁ → fi via NFKC
 
 
 class TestTrailingWhitespace:
