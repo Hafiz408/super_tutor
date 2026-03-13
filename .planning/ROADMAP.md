@@ -197,6 +197,6 @@ Plans:
 | 8. Storage and Workflow Foundation | v4.0 | 2/2 | Complete | 2026-03-12 |
 | 9. Backend API Simplification | v5.0 | 1/1 | Complete | 2026-03-13 |
 | 10. Frontend Cleanup | v5.0 | 1/1 | Complete | 2026-03-13 |
-| 11. Backend Foundation | v6.0 | 0/TBD | Not started | - |
+| 11. Backend Foundation | 1/3 | In Progress|  | - |
 | 12. Backend Upload Endpoint | v6.0 | 0/TBD | Not started | - |
 | 13. Frontend Upload UI | v6.0 | 0/TBD | Not started | - |
