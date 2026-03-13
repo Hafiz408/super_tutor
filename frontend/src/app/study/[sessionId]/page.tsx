@@ -164,6 +164,11 @@ export default function StudyPage() {
     loadSession();
   }, [sessionId]);
 
+  // CLEAN-02 audit: localStorage session data (session:${sessionId}) retains the `notes` field.
+  // This is intentional — notes are rendered client-side in the Notes tab without a backend round-trip.
+  // Notes travel backend-to-backend for regenerate/chat (sourced from SQLite); the client keeps its
+  // own copy solely for display. No notes field is sent in any API request payload (see API-03).
+
   // Persist a partial update back to localStorage and state
   function updateSession(patch: Partial<SessionResult>) {
     setSession((prev) => {
@@ -188,7 +193,7 @@ export default function StudyPage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ notes: session.notes, tutoring_type: session.tutoring_type }),
+          body: JSON.stringify({ tutoring_type: session.tutoring_type }),
         }
       );
       if (!res.ok) throw new Error("Generation failed");
@@ -211,7 +216,7 @@ export default function StudyPage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ notes: session.notes, tutoring_type: session.tutoring_type }),
+          body: JSON.stringify({ tutoring_type: session.tutoring_type }),
         }
       );
       if (!res.ok) throw new Error("Generation failed");

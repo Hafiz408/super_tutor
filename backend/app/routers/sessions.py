@@ -269,19 +269,30 @@ async def get_session(session_id: str):
 # ---------------------------------------------------------------------------
 
 class RegenerateRequest(BaseModel):
-    notes: str
     tutoring_type: str
 
 
 @router.post("/{session_id}/regenerate/{section}")
 async def regenerate_section(session_id: str, section: str, body: RegenerateRequest):
-    """Generates flashcards or quiz on demand using notes + tutoring_type from the client."""
+    """Generates flashcards or quiz on demand using notes loaded from SQLite session state."""
     if section not in ("flashcards", "quiz"):
         raise HTTPException(status_code=400, detail="section must be 'flashcards' or 'quiz'")
 
     _guard_session(session_id)
 
-    input_text = f"Content:\n{body.notes}"
+    wf = build_session_workflow(session_id=session_id, session_db=_get_traces_db())
+    existing = wf.get_session(session_id=session_id)
+    if existing is None:
+        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found.")
+    state = (existing.session_data or {}).get("session_state", {})
+    notes = state.get("notes", "")
+    if not notes:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Session '{session_id}' has no notes. Cannot regenerate.",
+        )
+
+    input_text = f"Content:\n{notes}"
     logger.info(
         "Generating %s — session_id=%s tutoring_type=%s",
         section, session_id, body.tutoring_type,
