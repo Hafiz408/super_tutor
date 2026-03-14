@@ -28,7 +28,6 @@ logger = logging.getLogger("super_tutor.upload")
 router = APIRouter()
 
 
-MAX_BYTES = 20 * 1024 * 1024  # 20 MB
 ALLOWED_EXTENSIONS = (".pdf", ".docx")
 
 
@@ -89,12 +88,14 @@ async def create_upload_session(
         )
 
     # Step 3: File size guard
-    if len(file_bytes) > MAX_BYTES:
+    max_bytes = get_settings().upload_max_bytes
+    if len(file_bytes) > max_bytes:
+        limit_mb = max_bytes // (1024 * 1024)
         raise HTTPException(
             status_code=413,
             detail={
                 "error_kind": "file_too_large",
-                "message": "File exceeds the 20 MB limit. Please upload a smaller file.",
+                "message": f"File exceeds the {limit_mb} MB limit. Please upload a smaller file.",
             },
         )
 

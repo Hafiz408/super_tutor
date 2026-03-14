@@ -14,15 +14,9 @@ from pypdf import PdfReader
 from docx import Document
 
 from app.extraction.cleaner import clean_extracted_content
+from app.config import get_settings
 
 logger = logging.getLogger("super_tutor.extraction")
-
-SCANNED_PDF_THRESHOLD = 200  # minimum chars (stripped) to consider a PDF text-based
-TRUNCATION_LIMIT = 50_000
-TRUNCATION_MARKER = (
-    "\n\n[Content truncated: document exceeds 50,000 characters. "
-    "Upload a specific chapter or section for full coverage.]"
-)
 
 
 class DocumentExtractionError(Exception):
@@ -74,7 +68,7 @@ def _extract_pdf(pdf_bytes: bytes) -> str:
         parts.append(text)
     raw = "\n\n".join(parts)
 
-    if len(raw.strip()) < SCANNED_PDF_THRESHOLD:
+    if len(raw.strip()) < get_settings().scanned_pdf_threshold:
         raise DocumentExtractionError(
             error_kind="scanned_pdf",
             message=(
@@ -109,22 +103,27 @@ def _extract_docx(docx_bytes: bytes) -> str:
 
 
 def _soft_truncate(text: str) -> str:
-    """Truncate text at the nearest paragraph or sentence boundary below TRUNCATION_LIMIT."""
-    if len(text) <= TRUNCATION_LIMIT:
+    """Truncate text at the nearest paragraph or sentence boundary below the configured limit."""
+    limit = get_settings().document_truncation_limit
+    if len(text) <= limit:
         return text
 
     # Prefer paragraph boundary
-    boundary = text.rfind("\n\n", 0, TRUNCATION_LIMIT)
+    boundary = text.rfind("\n\n", 0, limit)
     if boundary == -1:
         # Fall back to sentence boundary
-        boundary = text.rfind(". ", 0, TRUNCATION_LIMIT)
+        boundary = text.rfind(". ", 0, limit)
     if boundary == -1:
         # Hard cut as last resort
-        boundary = TRUNCATION_LIMIT
+        boundary = limit
 
     logger.warning(
         "Document truncated at char %d (original length: %d)",
         boundary,
         len(text),
     )
-    return text[:boundary] + TRUNCATION_MARKER
+    marker = (
+        f"\n\n[Content truncated: document exceeds {limit:,} characters. "
+        "Upload a specific chapter or section for full coverage.]"
+    )
+    return text[:boundary] + marker

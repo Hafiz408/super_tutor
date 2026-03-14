@@ -30,6 +30,16 @@ class Settings(BaseSettings):
     rate_limit_chat: str = "60/minute"       # per-IP limit for POST /chat/stream
     rate_limit_upload: str = "10/minute"     # per-IP limit for POST /sessions/upload
 
+    # Upload
+    upload_max_bytes: int = 20 * 1024 * 1024    # 20 MB; override with UPLOAD_MAX_BYTES
+
+    # Document extraction
+    document_truncation_limit: int = 50_000      # chars; override with DOCUMENT_TRUNCATION_LIMIT
+    scanned_pdf_threshold: int = 200             # min chars to treat a PDF as text-based
+
+    # Chat
+    chat_history_window: int = 6                 # past turns included in context; override with CHAT_HISTORY_WINDOW
+
     # CORS
     allowed_origins: List[str] | str = ["http://localhost:3000"]
 

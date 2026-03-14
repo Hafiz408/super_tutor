@@ -1,4 +1,4 @@
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl
 from typing import Optional, List, Literal
 
 
@@ -9,10 +9,10 @@ SessionType = Literal["url", "topic", "paste", "upload"]
 
 class SessionRequest(BaseModel):
     url: Optional[HttpUrl] = None
-    paste_text: Optional[str] = None
-    topic_description: Optional[str] = None
+    paste_text: Optional[str] = Field(default=None, max_length=200_000)
+    topic_description: Optional[str] = Field(default=None, max_length=1000)
     tutoring_type: TutoringType
-    focus_prompt: Optional[str] = None
+    focus_prompt: Optional[str] = Field(default=None, max_length=500)
     generate_flashcards: bool = False
     generate_quiz: bool = False
 
