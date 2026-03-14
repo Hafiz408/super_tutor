@@ -5,6 +5,7 @@ from typing import AsyncGenerator
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sse_starlette.sse import EventSourceResponse
 from agno.db.sqlite import SqliteDb
+from agno.exceptions import InputCheckError
 
 from app.models.tutor import TutorStreamRequest
 from app.agents.tutor_team import build_tutor_team, TUTOR_TOKEN_EVENTS, TUTOR_ERROR_EVENT
@@ -105,6 +106,15 @@ async def tutor_stream(session_id: str, request: Request, body: TutorStreamReque
             logger.info("Tutor stream done", extra={"session_id": session_id})
             yield {"event": "done", "data": json.dumps({})}
 
+        except InputCheckError as e:
+            # GUARD-01: topic guardrail rejected the message — friendly redirect, not a server error.
+            logger.info("Topic guardrail triggered — session_id=%s message=%s", session_id, str(e)[:100])
+            yield {
+                "event": "rejected",
+                "data": json.dumps({
+                    "reason": "That's outside what we're studying today. Let's stay focused on the session material."
+                }),
+            }
         except Exception as e:
             logger.error("Tutor stream error: %s", e, exc_info=True, extra={"session_id": session_id})
             yield {"event": "error", "data": json.dumps({"error": "Something went wrong. Please try again."})}
