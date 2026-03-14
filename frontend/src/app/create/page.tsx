@@ -69,9 +69,122 @@ function CreateForm() {
 
   const errorMessages = errorKind ? ERROR_MESSAGES[errorKind] ?? ERROR_MESSAGES.empty : null;
 
+  async function handleUploadSubmit() {
+    if (!selectedMode || !selectedFile) return;
+    setIsSubmitting(true);
+    setUploadError(null);
+    setUploadProgressMessage("Uploading your file...");
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+    formData.append("tutoring_type", selectedMode);
+    if (focusPrompt) formData.append("focus_prompt", focusPrompt);
+    formData.append("generate_flashcards", String(generateFlashcards));
+    formData.append("generate_quiz", String(generateQuiz));
+
+    let res: Response;
+    try {
+      res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/sessions/upload`, {
+        method: "POST",
+        body: formData,
+        // DO NOT set Content-Type — browser sets multipart/form-data with correct boundary automatically
+      });
+    } catch {
+      setUploadError({ error_kind: "network_error", message: "Could not reach the server. Check your connection and try again." });
+      setIsSubmitting(false);
+      setUploadProgressMessage(null);
+      return;
+    }
+
+    // Pre-stream HTTP errors (400 unsupported_format, 413 file_too_large, 422 scanned_pdf)
+    if (!res.ok) {
+      try {
+        const errBody = await res.json();
+        const detail = errBody.detail ?? {};
+        setUploadError({
+          error_kind: detail.error_kind ?? "upload_error",
+          message: detail.message ?? "Upload failed. Please try again.",
+        });
+      } catch {
+        setUploadError({ error_kind: "upload_error", message: "Upload failed. Please try again." });
+      }
+      setIsSubmitting(false);
+      setUploadProgressMessage(null);
+      return;
+    }
+
+    // SSE stream — session_id arrives in the 'complete' event
+    if (!res.body) {
+      setUploadError({ error_kind: "upload_error", message: "No response stream. Please try again." });
+      setIsSubmitting(false);
+      setUploadProgressMessage(null);
+      return;
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let currentEvent = "";
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (line.startsWith("event: ")) {
+            currentEvent = line.slice(7).trim();
+          } else if (line.startsWith("data: ")) {
+            const raw = line.slice(6).trim();
+            if (!raw) continue;
+            try {
+              const parsed = JSON.parse(raw);
+              if (currentEvent === "progress" && parsed.message) {
+                setUploadProgressMessage(parsed.message);
+              } else if (currentEvent === "complete" && parsed.session_id) {
+                saveSession({
+                  session_id: parsed.session_id,
+                  source_title: selectedFile.name,
+                  tutoring_type: selectedMode,
+                  session_type: "upload",
+                });
+                router.push(`/study/${parsed.session_id}`);
+                return;
+              } else if (currentEvent === "error") {
+                setUploadError({
+                  error_kind: parsed.error_kind ?? "workflow_error",
+                  message: parsed.message ?? "An error occurred during processing.",
+                });
+                setIsSubmitting(false);
+                setUploadProgressMessage(null);
+                return;
+              }
+            } catch {
+              // Ignore non-JSON lines
+            }
+          }
+        }
+      }
+    } catch {
+      setUploadError({ error_kind: "workflow_error", message: "Connection lost during upload. Please try again." });
+      setIsSubmitting(false);
+      setUploadProgressMessage(null);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedMode) return;
+
+    // Upload mode has its own SSE-based submission path
+    if (inputMode === "upload") {
+      await handleUploadSubmit();
+      return;
+    }
+
     setIsSubmitting(true);
     setErrorKind(null);
 
