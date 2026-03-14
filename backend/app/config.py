@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     # Chat
     chat_history_window: int = 20                # past turns included in context; override with CHAT_HISTORY_WINDOW
 
+    # Tutor
+    tutor_history_window: int = 10               # past Team runs included in tutor context; override with TUTOR_HISTORY_WINDOW
+    rate_limit_tutor: str = "60/minute"          # per-IP limit for POST /tutor/{session_id}/stream
+
     # CORS
     allowed_origins: List[str] | str = ["http://localhost:3000"]
 
