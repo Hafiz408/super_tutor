@@ -23,7 +23,7 @@
 
 - [x] **EXTRACT-01**: Backend extracts plain text from uploaded PDF using pypdf (memory-only, no disk write)
 - [x] **EXTRACT-02**: Backend extracts plain text from uploaded .docx using python-docx (memory-only, no disk write)
-- [ ] **EXTRACT-03**: Files larger than 20 MB are rejected client-side before upload with a clear error message
+- [x] **EXTRACT-03**: Files larger than 20 MB are rejected client-side before upload with a clear error message
 - [x] **EXTRACT-04**: Scanned/image-only PDFs (near-zero extracted text) return a specific error message to the user
 - [x] **EXTRACT-05**: Documents whose extracted text exceeds ~50,000 characters are truncated with a visible warning advising the user to upload a specific chapter or section
 
@@ -80,7 +80,7 @@
 | UPLOAD-05 | Phase 11 | Complete |
 | EXTRACT-01 | Phase 11 | Complete |
 | EXTRACT-02 | Phase 11 | Complete |
-| EXTRACT-03 | Phase 13 | Pending |
+| EXTRACT-03 | Phase 13 | Complete |
 | EXTRACT-04 | Phase 11 | Complete |
 | EXTRACT-05 | Phase 11 | Complete |
 | SESSION-01 | Phase 12 | Complete |

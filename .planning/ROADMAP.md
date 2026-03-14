@@ -207,4 +207,4 @@ Plans:
 | 10. Frontend Cleanup | v5.0 | 1/1 | Complete | 2026-03-13 |
 | 11. Backend Foundation | v6.0 | 3/3 | Complete | 2026-03-13 |
 | 12. Backend Upload Endpoint | v6.0 | 3/3 | Complete | 2026-03-14 |
-| 13. Frontend Upload UI | 2/4 | In Progress|  | - |
+| 13. Frontend Upload UI | 3/4 | In Progress|  | - |

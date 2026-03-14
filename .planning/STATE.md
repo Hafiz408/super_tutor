@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-03-13 after v6.0 milestone start)
 ## Current Position
 
 Phase: 13 of 13 (Frontend Upload UI)
-Plan: 2 of 3 complete
-Status: In progress — Plan 13-02 done; Plan 13-03 (upload submit/SSE flow) next
-Last activity: 2026-03-14 — Completed 13-02: SessionType extended to 'upload', three-tab create page with file input and 20 MB client-side guard, loading page type-safe for upload inputMode
+Plan: 3 of 3 complete
+Status: Phase 13 complete — all plans done; v6.0 Document Upload feature complete end-to-end
+Last activity: 2026-03-14 — Completed 13-03: handleUploadSubmit with FormData fetch and inline SSE consumer, upload progress spinner, error_kind-aware error UI
 
-Progress: [████████████░] 92% (Phase 13 in progress 2/3 plans)
+Progress: [█████████████] 100% (Phase 13 complete — all 3/3 plans done)
 
 ## Performance Metrics
 
@@ -83,6 +83,12 @@ All decisions logged in PROJECT.md Key Decisions table (fully updated after v5.0
 - Focus prompt field confirmed as shared unconditional input — no duplicate added inside Upload section
 - handleFileChange resets e.target.value on oversized file so same file path can be re-selected after correction
 
+**13-03 decisions:**
+- No Content-Type header set in handleUploadSubmit — manually setting it breaks FastAPI multipart boundary parsing
+- EventSource not used — upload is POST with FormData body; inline ReadableStream reader is the only viable SSE approach
+- scanned_pdf error_kind gets a fixed actionable override message; other error_kinds fall through to backend-supplied message
+- Tab switch handlers on all three tabs clear uploadError and uploadProgressMessage to prevent stale state from prior upload attempts
+
 Key architectural facts for v6.0:
 - `asyncio.to_thread()` required for all synchronous extraction calls in async FastAPI handlers (pypdf and python-docx are blocking; same pattern as existing workflow.run())
 - `document_extractor.py` must accept `bytes` and return `str` — never touch the filesystem
@@ -110,5 +116,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-14
-Stopped at: Completed 13-02-PLAN.md (Frontend upload UI: SessionType='upload', three-tab create page, file input with 20 MB guard, loading page type widened)
+Stopped at: Completed 13-03-PLAN.md (Frontend upload UI: handleUploadSubmit with FormData fetch, inline SSE consumer, progress spinner, error_kind-aware error UI — Phase 13 complete)
 Resume file: None
