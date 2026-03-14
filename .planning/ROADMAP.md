@@ -174,10 +174,11 @@ Plans:
   2. When a user asks for extra flashcards or a notes excerpt, the coordinator routes to Content Writer and the output renders as generated inline content
   3. Off-topic messages (e.g., "write me a poem about dogs") are rejected with a polite redirect before coordinator dispatch — no specialist is invoked
   4. Educational phrasing ("pretend you're a teacher", "ignore what I said") does not trigger a false-positive rejection — LLM-as-judge distinguishes intent correctly
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 15-01: TBD
+- [ ] 15-01-PLAN.md — TopicRelevanceGuardrail (GUARD-01), validate_team_output (GUARD-02), router rejected SSE event
+- [ ] 15-02-PLAN.md — Researcher + Content Writer specialists wired into build_tutor_team(), session_topic router pass-through
 
 ### Phase 16: Frontend Tutor Tab
 **Goal**: Users see a Personal Tutor tab as the 4th study tab; opening it restores persisted conversation history and displays a tutor introduction
@@ -237,7 +238,7 @@ Plans:
 | 11. Backend Foundation | v6.0 | 3/3 | Complete | 2026-03-13 |
 | 12. Backend Upload Endpoint | v6.0 | 3/3 | Complete | 2026-03-14 |
 | 13. Frontend Upload UI | v6.0 | 4/4 | Complete | 2026-03-14 |
-| 14. Team Foundation | 2/2 | Complete   | 2026-03-14 | - |
+| 14. Team Foundation | 2/2 | Complete    | 2026-03-14 | - |
 | 15. Full Specialist Roster + Guardrails | v7.0 | 0/TBD | Not started | - |
 | 16. Frontend Tutor Tab | v7.0 | 0/TBD | Not started | - |
 | 17. In-Tutor Quiz Mode | v7.0 | 0/TBD | Not started | - |
