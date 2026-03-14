@@ -32,6 +32,11 @@ router = APIRouter()
 # It is also used by the lifespan shutdown hook in main.py to drain
 # in-flight tasks before the process exits.
 
+# Process-local cache for completed session data.
+# Sessions are immutable once complete so we can cache them indefinitely.
+# Keyed by session_id; values are the full GET response dicts.
+_SESSION_CACHE: dict[str, dict] = {}
+
 
 # ---------------------------------------------------------------------------
 # Session guard (used by regenerate endpoint)
@@ -231,7 +236,11 @@ async def get_session(session_id: str, traces_db: SqliteDb = Depends(get_traces_
             },
         )
 
-    # status == "complete" — read session data from agno's SQLite (traces db)
+    # status == "complete" — serve from memory cache to avoid repeated agno SQLite reads
+    if session_id in _SESSION_CACHE:
+        logger.debug("get_session cache hit — session_id=%s", session_id)
+        return _SESSION_CACHE[session_id]
+
     wf = build_session_workflow(session_id=session_id, session_db=traces_db)
     existing = wf.get_session(session_id=session_id)
     if existing is None:
@@ -244,7 +253,7 @@ async def get_session(session_id: str, traces_db: SqliteDb = Depends(get_traces_
 
     state = (existing.session_data or {}).get("session_state", {})
     logger.info("get_session complete — session_id=%s", session_id)
-    return {
+    result = {
         "status": "complete",
         "session_id": session_id,
         "source_title": state.get("title", "Study Session"),
@@ -257,6 +266,8 @@ async def get_session(session_id: str, traces_db: SqliteDb = Depends(get_traces_
         "quiz": state.get("quiz", []),
         "chat_intro": state.get("chat_intro", ""),
     }
+    _SESSION_CACHE[session_id] = result
+    return result
 
 
 # ---------------------------------------------------------------------------
