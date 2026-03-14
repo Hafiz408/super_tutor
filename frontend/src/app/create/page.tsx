@@ -274,7 +274,7 @@ function CreateForm() {
         <div className="flex rounded-lg border border-zinc-200 overflow-hidden w-full sm:w-auto">
           <button
             type="button"
-            onClick={() => { setInputMode("url"); setTopicDescription(""); }}
+            onClick={() => { setInputMode("url"); setTopicDescription(""); setUploadError(null); setUploadProgressMessage(null); }}
             className={`flex-1 sm:flex-none px-4 py-2 text-sm font-medium transition-colors ${
               inputMode === "url" ? "bg-zinc-900 text-white" : "bg-white text-zinc-500 hover:bg-zinc-50"
             }`}
@@ -283,7 +283,7 @@ function CreateForm() {
           </button>
           <button
             type="button"
-            onClick={() => { setInputMode("topic"); setUrl(""); }}
+            onClick={() => { setInputMode("topic"); setUrl(""); setUploadError(null); setUploadProgressMessage(null); }}
             className={`flex-1 sm:flex-none px-4 py-2 text-sm font-medium transition-colors ${
               inputMode === "topic" ? "bg-zinc-900 text-white" : "bg-white text-zinc-500 hover:bg-zinc-50"
             }`}
@@ -292,7 +292,7 @@ function CreateForm() {
           </button>
           <button
             type="button"
-            onClick={() => { setInputMode("upload"); setUrl(""); setTopicDescription(""); setSelectedFile(null); setFileError(null); setUploadError(null); }}
+            onClick={() => { setInputMode("upload"); setUrl(""); setTopicDescription(""); setSelectedFile(null); setFileError(null); setUploadError(null); setUploadProgressMessage(null); }}
             className={`flex-1 sm:flex-none px-4 py-2 text-sm font-medium transition-colors ${
               inputMode === "upload" ? "bg-zinc-900 text-white" : "bg-white text-zinc-500 hover:bg-zinc-50"
             }`}
@@ -347,8 +347,17 @@ function CreateForm() {
           </div>
         )}
 
-        {/* File upload input */}
-        {inputMode === "upload" && (
+        {/* File upload input — replaced by spinner while streaming */}
+        {inputMode === "upload" && isSubmitting && (
+          <div className="flex flex-col items-center gap-3 py-8">
+            <span className="spinner" />
+            <p className="text-sm text-zinc-600 text-center">
+              {uploadProgressMessage ?? "Processing your file..."}
+            </p>
+          </div>
+        )}
+
+        {inputMode === "upload" && !isSubmitting && (
           <div className="flex flex-col gap-2">
             <label htmlFor="file_upload" className="text-sm font-medium text-zinc-900">
               Upload a PDF or Word document
@@ -368,6 +377,26 @@ function CreateForm() {
                 Selected: {selectedFile.name} ({(selectedFile.size / (1024 * 1024)).toFixed(1)} MB)
               </p>
             )}
+          </div>
+        )}
+
+        {/* Upload error display — error_kind-aware messaging */}
+        {inputMode === "upload" && uploadError && (
+          <div className="flex flex-col gap-2 p-4 rounded-xl border border-red-200 bg-red-50" role="alert">
+            <p className="font-semibold text-sm text-red-700">
+              {uploadError.error_kind === "scanned_pdf"
+                ? "This PDF can't be read"
+                : uploadError.error_kind === "file_too_large"
+                ? "File too large"
+                : uploadError.error_kind === "unsupported_format"
+                ? "Unsupported file type"
+                : "Upload failed"}
+            </p>
+            <p className="text-xs text-red-600">
+              {uploadError.error_kind === "scanned_pdf"
+                ? "This PDF appears to be scanned or image-only — we can't extract text from it. Try a text-based PDF, or use the Topic tab to learn about the subject instead."
+                : uploadError.message}
+            </p>
           </div>
         )}
 
