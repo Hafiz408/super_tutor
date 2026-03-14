@@ -29,6 +29,7 @@ router = APIRouter()
 _ACTIVE_TASKS: set[asyncio.Task] = set()
 
 MAX_BYTES = 20 * 1024 * 1024  # 20 MB
+ALLOWED_EXTENSIONS = (".pdf", ".docx")
 
 
 # ---------------------------------------------------------------------------
@@ -49,7 +50,7 @@ async def create_upload_session(
     session-creation progress events via Server-Sent Events.
 
     Pre-stream validation:
-      - Extension check: must end with .pdf (HTTP 400 for others)
+      - Extension check: must end with .pdf or .docx (HTTP 400 for others)
       - Size guard: max 20 MB (HTTP 413)
       - Extraction: scanned/image PDFs raise HTTP 422 with error_kind='scanned_pdf'
 
@@ -74,13 +75,13 @@ async def create_upload_session(
         filename, len(file_bytes), tutoring_type,
     )
 
-    # Step 2: Extension / MIME validation — only PDF supported via this endpoint
-    if not filename.lower().endswith(".pdf"):
+    # Step 2: Extension / MIME validation — only PDF and DOCX supported via this endpoint
+    if not filename.lower().endswith(ALLOWED_EXTENSIONS):
         raise HTTPException(
             status_code=400,
             detail={
                 "error_kind": "unsupported_format",
-                "message": "Only PDF files are supported. Please upload a .pdf file.",
+                "message": "Only PDF and Word (.docx) files are supported.",
             },
         )
 
