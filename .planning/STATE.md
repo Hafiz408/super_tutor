@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-15 after v7.0 milestone start)
 
 **Core value:** A user gives a topic (URL, description, or document), picks how they want to learn, and gets a complete, ready-to-study session in minutes — no account needed, no friction.
-**Current focus:** Phase 15 (next)
+**Current focus:** Phase 15 (Full Specialist Roster + Guardrails)
 
 ## Current Position
 
-Phase: 14 of 18 (Team Foundation) — COMPLETE
-Plan: 2 of 2 in current phase
-Status: Complete
-Last activity: 2026-03-15 — Phase 14 Plan 02 complete; tutor SSE router + main.py registration
+Phase: 15 of 18 (Full Specialist Roster + Guardrails) — IN PROGRESS
+Plan: 1 of 3 in current phase
+Status: In Progress
+Last activity: 2026-03-15 — Phase 15 Plan 01 complete; TopicRelevanceGuardrail (GUARD-01) + validate_team_output (GUARD-02) + rejected SSE event in tutor router
 
-Progress: [██████████████░░░░░] 14/18 phases complete (v1.0–v7.0 Team Foundation shipped)
+Progress: [███████████████░░░░] 15/18 phases in progress (v1.0–v7.0 Team Foundation shipped; Phase 15 guardrails started)
 
 ## Performance Metrics
 
@@ -46,12 +46,19 @@ Progress: [██████████████░░░░░] 14/18 phas
 
 *Updated after each plan completion*
 | Phase 14-team-foundation P02 | 2 | 2 tasks | 2 files |
+| Phase 15-guardrails P01 | 5min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
 ### Decisions
 
 All v1.0–v6.0 decisions logged in PROJECT.md Key Decisions table.
+
+**Phase 15 Plan 01 decisions (2026-03-15):**
+- TopicRelevanceGuardrail uses asyncio.to_thread in async_check() to avoid blocking event loop on synchronous model.invoke() (RESEARCH.md Pitfall 1)
+- rejected SSE event (not error) for InputCheckError — polite topic redirect is not a server failure
+- Judge prompt includes explicit YES rules for educational phrasing to prevent false positives
+- validate_team_output mirrors validate_substantive_output 20-char threshold for consistency
 
 **Phase 14 Plan 01 decisions (2026-03-15):**
 - TeamMode.coordinate chosen over route: coordinate gives coordinator framing tokens before Explainer; route suppresses coordinator output (respond_directly=True) — violates the brief-acknowledgment-prefix requirement
@@ -74,5 +81,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-15
-Stopped at: Completed 14-02-PLAN.md — tutor SSE router + main.py registration. Phase 14 Team Foundation complete. Ready for Phase 15.
+Stopped at: Completed 15-01-PLAN.md — TopicRelevanceGuardrail (GUARD-01) + validate_team_output (GUARD-02) + rejected SSE event in tutor router. Phase 15 Plan 01 complete. Ready for Phase 15 Plan 02.
 Resume file: None

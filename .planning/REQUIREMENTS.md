@@ -44,8 +44,8 @@ Requirements for the Personal Tutor milestone. Continues numbering from v6.0.
 
 ### Guardrails (GUARD)
 
-- [ ] **GUARD-01**: Input guardrail rejects messages clearly unrelated to the session topic before coordinator dispatches; uses LLM-as-judge approach (not pattern-matching) to avoid false positives on educational phrasing
-- [ ] **GUARD-02**: Output guardrail validates generated content for coherence and topic relevance before it is streamed to the user
+- [x] **GUARD-01**: Input guardrail rejects messages clearly unrelated to the session topic before coordinator dispatches; uses LLM-as-judge approach (not pattern-matching) to avoid false positives on educational phrasing
+- [x] **GUARD-02**: Output guardrail validates generated content for coherence and topic relevance before it is streamed to the user
 - [x] **GUARD-03**: All specialist agents carry a system constraint grounding responses strictly to session source material; Researcher is the only agent permitted to introduce external information
 
 ## Future Requirements (v7.1+)
@@ -97,8 +97,8 @@ All 23 v7.0 requirements mapped to phases. Updated during roadmap creation (2026
 | ADVISE-01 | Phase 18 | Pending |
 | ADVISE-02 | Phase 18 | Pending |
 | ADVISE-03 | Phase 18 | Pending |
-| GUARD-01 | Phase 15 | Pending |
-| GUARD-02 | Phase 15 | Pending |
+| GUARD-01 | Phase 15 | Complete |
+| GUARD-02 | Phase 15 | Complete |
 | GUARD-03 | Phase 14 | Complete |
 
 **Coverage:**

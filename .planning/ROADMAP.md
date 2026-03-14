@@ -239,7 +239,7 @@ Plans:
 | 12. Backend Upload Endpoint | v6.0 | 3/3 | Complete | 2026-03-14 |
 | 13. Frontend Upload UI | v6.0 | 4/4 | Complete | 2026-03-14 |
 | 14. Team Foundation | 2/2 | Complete    | 2026-03-14 | - |
-| 15. Full Specialist Roster + Guardrails | v7.0 | 0/TBD | Not started | - |
+| 15. Full Specialist Roster + Guardrails | 1/2 | In Progress|  | - |
 | 16. Frontend Tutor Tab | v7.0 | 0/TBD | Not started | - |
 | 17. In-Tutor Quiz Mode | v7.0 | 0/TBD | Not started | - |
 | 18. Adaptive Intelligence | v7.0 | 0/TBD | Not started | - |
