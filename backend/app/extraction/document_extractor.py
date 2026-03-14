@@ -18,6 +18,16 @@ from app.config import get_settings
 
 logger = logging.getLogger("super_tutor.extraction")
 
+# Module-level constants expose the default values for introspection and testing.
+# Runtime code reads the live config via get_settings() so these can be overridden
+# without restarting by changing the env vars (honoured on next Settings instantiation).
+SCANNED_PDF_THRESHOLD: int = 200
+TRUNCATION_LIMIT: int = 50_000
+TRUNCATION_MARKER: str = (
+    f"\n\n[Content truncated: document exceeds {TRUNCATION_LIMIT:,} characters. "
+    "Upload a specific chapter or section for full coverage.]"
+)
+
 
 class DocumentExtractionError(Exception):
     """Raised for unrecoverable document extraction failures."""

@@ -157,7 +157,7 @@ async def _run_session_pipeline(
 
 @router.post("")
 @limiter.limit(get_settings().rate_limit_sessions)
-async def create_session(http_request: Request, request: SessionRequest, traces_db: SqliteDb = Depends(get_traces_db)):
+async def create_session(request: Request, body: SessionRequest, traces_db: SqliteDb = Depends(get_traces_db)):
     """
     Creates a session and starts the AI workflow as a background task.
     Returns session_id immediately. Client polls GET /sessions/{session_id}.
@@ -171,25 +171,25 @@ async def create_session(http_request: Request, request: SessionRequest, traces_
 
     logger.debug(
         "create_session called — tutoring_type=%s has_url=%s has_paste=%s has_topic=%s",
-        request.tutoring_type,
-        bool(request.url),
-        bool(request.paste_text),
-        bool(request.topic_description),
+        body.tutoring_type,
+        bool(body.url),
+        bool(body.paste_text),
+        bool(body.topic_description),
     )
 
-    if request.topic_description and len(request.topic_description.strip()) < 10:
+    if body.topic_description and len(body.topic_description.strip()) < 10:
         raise HTTPException(
             status_code=422,
             detail="Topic description is too short. Please describe what you want to learn.",
         )
 
     session_id = str(uuid.uuid4())
-    params = request.model_dump(mode="json")
-    input_type = "topic" if request.topic_description else ("paste" if request.paste_text else "url")
+    params = body.model_dump(mode="json")
+    input_type = "topic" if body.topic_description else ("paste" if body.paste_text else "url")
 
     logger.info(
         "Session created — session_id=%s input_type=%s tutoring_type=%s",
-        session_id, input_type, request.tutoring_type,
+        session_id, input_type, body.tutoring_type,
     )
 
     create_session_status(session_id)
@@ -282,7 +282,7 @@ class RegenerateRequest(BaseModel):
 
 @router.post("/{session_id}/regenerate/{section}")
 @limiter.limit(get_settings().rate_limit_sessions)
-async def regenerate_section(http_request: Request, session_id: str, section: str, body: RegenerateRequest, traces_db: SqliteDb = Depends(get_traces_db)):
+async def regenerate_section(request: Request, session_id: str, section: str, body: RegenerateRequest, traces_db: SqliteDb = Depends(get_traces_db)):
     """Generates flashcards or quiz on demand using source_content loaded from SQLite session state."""
     if section not in ("flashcards", "quiz"):
         raise HTTPException(status_code=400, detail="section must be 'flashcards' or 'quiz'")

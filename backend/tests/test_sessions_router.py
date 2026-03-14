@@ -9,8 +9,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from unittest.mock import MagicMock
 
 from app.routers import sessions as sessions_router
+from app.dependencies import get_traces_db
 
 
 # ---------------------------------------------------------------------------
@@ -21,6 +23,8 @@ from app.routers import sessions as sessions_router
 def client():
     app = FastAPI()
     app.include_router(sessions_router.router, prefix="/sessions")
+    # Override get_traces_db so requests don't need a real SQLite connection.
+    app.dependency_overrides[get_traces_db] = lambda: MagicMock()
     return TestClient(app)
 
 
@@ -160,7 +164,6 @@ def test_get_session_complete(client):
             return_value={"status": "complete", "error_kind": "", "error_message": ""},
         ),
         patch("app.routers.sessions.build_session_workflow", return_value=mock_workflow),
-        patch("app.routers.sessions._get_traces_db"),
     ):
         response = client.get("/sessions/some-session-id")
 
@@ -219,10 +222,10 @@ def test_regenerate_flashcards_loads_source_content_from_sqlite(client):
     mock_workflow = MagicMock()
     mock_workflow.get_session.return_value = mock_session
 
-    mock_agent = MagicMock()
     mock_result = MagicMock()
     mock_result.content = '[{"front": "Q", "back": "A"}]'
-    mock_agent.run.return_value = mock_result
+    mock_agent = MagicMock()
+    mock_agent.arun = AsyncMock(return_value=mock_result)
 
     with (
         patch(
@@ -230,9 +233,7 @@ def test_regenerate_flashcards_loads_source_content_from_sqlite(client):
             return_value={"status": "complete", "error_kind": "", "error_message": ""},
         ),
         patch("app.routers.sessions.build_session_workflow", return_value=mock_workflow),
-        patch("app.routers.sessions._get_traces_db"),
         patch("app.routers.sessions.build_flashcard_agent", return_value=mock_agent),
-        patch("app.routers.sessions.asyncio.to_thread", return_value=mock_result),
     ):
         response = client.post(
             "/sessions/some-session-id/regenerate/flashcards",
@@ -256,7 +257,6 @@ def test_regenerate_returns_404_when_sqlite_has_no_source_content(client):
             return_value={"status": "complete", "error_kind": "", "error_message": ""},
         ),
         patch("app.routers.sessions.build_session_workflow", return_value=mock_workflow),
-        patch("app.routers.sessions._get_traces_db"),
     ):
         response = client.post(
             "/sessions/no-notes-session/regenerate/flashcards",

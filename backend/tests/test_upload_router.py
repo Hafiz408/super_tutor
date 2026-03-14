@@ -8,7 +8,7 @@ Pattern mirrors test_sessions_router.py: sync TestClient, per-test patches,
 no asyncio marks.
 """
 import json
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 
 from app.routers import upload as upload_router
 from app.extraction.document_extractor import DocumentExtractionError
+from app.dependencies import get_traces_db
 
 
 # ---------------------------------------------------------------------------
@@ -27,6 +28,7 @@ from app.extraction.document_extractor import DocumentExtractionError
 def client():
     app = FastAPI()
     app.include_router(upload_router.router, prefix="/sessions")
+    app.dependency_overrides[get_traces_db] = lambda: MagicMock()
     return TestClient(app)
 
 
@@ -214,6 +216,7 @@ def test_existing_sessions_route_unaffected_by_upload_router():
     app = FastAPI()
     app.include_router(sessions_router.router, prefix="/sessions")
     app.include_router(upload_router.router, prefix="/sessions")
+    app.dependency_overrides[get_traces_db] = lambda: MagicMock()
     c = TestClient(app)
 
     with (

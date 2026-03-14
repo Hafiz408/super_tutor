@@ -39,7 +39,7 @@ ALLOWED_EXTENSIONS = (".pdf", ".docx")
 @router.post("/upload")
 @limiter.limit(get_settings().rate_limit_upload)
 async def create_upload_session(
-    http_request: Request,
+    request: Request,
     file: UploadFile = File(...),
     tutoring_type: str = Form(...),
     focus_prompt: Optional[str] = Form(default=None),

@@ -18,7 +18,7 @@ router = APIRouter()
 
 @router.post("/stream")
 @limiter.limit(get_settings().rate_limit_chat)
-async def chat_stream(http_request: Request, request: ChatStreamRequest, traces_db: SqliteDb = Depends(get_traces_db)):
+async def chat_stream(request: Request, body: ChatStreamRequest, traces_db: SqliteDb = Depends(get_traces_db)):
     """
     Accept: JSON body with message, tutoring_type, history (list of {role, content}), session_id.
     Notes are loaded from SQLite session state via session_id (not accepted in the request body).
@@ -33,10 +33,10 @@ async def chat_stream(http_request: Request, request: ChatStreamRequest, traces_
     """
     # Load notes from SQLite session state — authoritative source, not client-supplied.
     try:
-        wf = build_session_workflow(session_id=request.session_id, session_db=traces_db)
-        session = wf.get_session(session_id=request.session_id)
+        wf = build_session_workflow(session_id=body.session_id, session_db=traces_db)
+        session = wf.get_session(session_id=body.session_id)
     except Exception as e:
-        logger.error("Failed to load session for chat — session_id=%s error=%s", request.session_id, e, exc_info=True)
+        logger.error("Failed to load session for chat — session_id=%s error=%s", body.session_id, e, exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to load session data. Please try again.")
 
     # session_data is the top-level dict; session_state is nested inside it
@@ -44,13 +44,13 @@ async def chat_stream(http_request: Request, request: ChatStreamRequest, traces_
     if not session or not session_state:
         raise HTTPException(
             status_code=404,
-            detail=f"Session '{request.session_id}' not found. Please create a new session.",
+            detail=f"Session '{body.session_id}' not found. Please create a new session.",
         )
     notes = session_state.get("notes", "")
     if not notes:
         raise HTTPException(
             status_code=404,
-            detail=f"Session '{request.session_id}' has no notes. Please create a new session.",
+            detail=f"Session '{body.session_id}' has no notes. Please create a new session.",
         )
 
     # Namespace the chat session_id to avoid colliding with the workflow session row.
@@ -58,24 +58,24 @@ async def chat_stream(http_request: Request, request: ChatStreamRequest, traces_
     # the chat agent to overwrite the workflow's session_data (which holds the notes).
     # If the client sends a chat_reset_id, append it so the agent starts a fresh DB session.
     chat_session_id = (
-        f"chat:{request.session_id}:{request.chat_reset_id}"
-        if request.chat_reset_id
-        else f"chat:{request.session_id}"
+        f"chat:{body.session_id}:{body.chat_reset_id}"
+        if body.chat_reset_id
+        else f"chat:{body.session_id}"
     )
 
-    agent = build_chat_agent(request.tutoring_type, notes, db=traces_db)
+    agent = build_chat_agent(body.tutoring_type, notes, db=traces_db)
 
     logger.info(
         "Chat stream start",
-        extra={"session_id": request.session_id, "tutoring_type": request.tutoring_type},
+        extra={"session_id": body.session_id, "tutoring_type": body.tutoring_type},
     )
 
-    session_title = session_state.get("title") or request.message
+    session_title = session_state.get("title") or body.message
 
     async def event_generator() -> AsyncGenerator[dict, None]:
         try:
             run_errored = False
-            async for chunk in agent.arun(request.message, stream=True, session_id=chat_session_id):
+            async for chunk in agent.arun(body.message, stream=True, session_id=chat_session_id):
                 if chunk.event == "RunError":
                     run_errored = True
                     break
