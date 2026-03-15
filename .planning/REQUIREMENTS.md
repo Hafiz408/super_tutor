@@ -19,8 +19,8 @@ Requirements for the Personal Tutor milestone. Continues numbering from v6.0.
 - [x] **TEAM-01**: Personal Tutor is backed by an Agno Team with a coordinator agent that routes to specialist sub-agents; existing agent builders (chat_agent, research_agent, notes_agent, flashcard_agent, quiz_agent) are reused as specialists — only the Coordinator and Advisor are new agents
 - [x] **TEAM-02**: Coordinator interprets user intent and dispatches to the appropriate specialist without asking the user to confirm routing (silent dispatch)
 - [x] **TEAM-03**: Explainer specialist (wraps existing chat_agent) answers Q&A grounded strictly in session source material and notes
-- [ ] **TEAM-04**: Researcher specialist (reuses existing research_agent) extends topics via Tavily when user asks to go deeper
-- [ ] **TEAM-05**: Content Writer specialist (reuses existing notes_agent, flashcard_agent, quiz_agent) generates additional notes excerpts, flashcards, or quiz questions rendered inline in chat
+- [x] **TEAM-04**: Researcher specialist (reuses existing research_agent) extends topics via Tavily when user asks to go deeper
+- [x] **TEAM-05**: Content Writer specialist (reuses existing notes_agent, flashcard_agent, quiz_agent) generates additional notes excerpts, flashcards, or quiz questions rendered inline in chat
 - [ ] **TEAM-06**: Quiz Master specialist (reuses existing quiz_agent for generation) runs in-conversation quizzes and evaluates user answers with explanation
 - [ ] **TEAM-07**: Advisor specialist (new agent) surfaces focus area suggestions based on in-tutor quiz performance and conversation patterns
 
@@ -84,8 +84,8 @@ All 23 v7.0 requirements mapped to phases. Updated during roadmap creation (2026
 | TEAM-01 | Phase 14 | Complete |
 | TEAM-02 | Phase 14 | Complete |
 | TEAM-03 | Phase 14 | Complete |
-| TEAM-04 | Phase 15 | Pending |
-| TEAM-05 | Phase 15 | Pending |
+| TEAM-04 | Phase 15 | Complete |
+| TEAM-05 | Phase 15 | Complete |
 | TEAM-06 | Phase 17 | Pending |
 | TEAM-07 | Phase 18 | Pending |
 | CONTENT-01 | Phase 14 | Complete |

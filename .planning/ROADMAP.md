@@ -142,7 +142,7 @@ Plans:
 **Milestone Goal:** Transform the study page into an adaptive tutoring experience — a persistent, session-grounded Agno Team that answers questions, runs quizzes, generates inline content, and surfaces focus area suggestions.
 
 - [x] **Phase 14: Team Foundation** - Coordinator + Explainer with streaming, persistence validation, and session grounding (completed 2026-03-14)
-- [ ] **Phase 15: Full Specialist Roster + Guardrails** - Researcher, Content Writer, and topic relevance guardrails
+- [x] **Phase 15: Full Specialist Roster + Guardrails** - Researcher, Content Writer, and topic relevance guardrails (completed 2026-03-14)
 - [ ] **Phase 16: Frontend Tutor Tab** - 4th study tab with persistent chat, history restore, and intro message
 - [ ] **Phase 17: In-Tutor Quiz Mode** - In-chat MCQ delivery, answer evaluation, and quiz result integration
 - [ ] **Phase 18: Adaptive Intelligence** - Advisor agent, proactive focus suggestions, and adaptive persistence
@@ -189,10 +189,11 @@ Plans:
   2. When the user opens the Tutor tab for the first time, the tutor sends an introduction message describing its capabilities
   3. After a page refresh, opening the Tutor tab restores all prior conversation messages without the user having to re-send anything
   4. Tutor-generated flashcard sets, notes excerpts, and quiz questions render inline in the chat with distinct formatting — nothing is written to the Notes, Flashcards, or Quiz tabs
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 16-01: TBD
+- [ ] 16-01-PLAN.md — Tab infrastructure (Tab union, nav entries, tutor state, sendTutorMessage SSE function)
+- [ ] 16-02-PLAN.md — Tutor tab UI rendering, intro trigger, markdown CSS, human verification
 
 ### Phase 17: In-Tutor Quiz Mode
 **Goal**: Users can ask the tutor to quiz them; Quiz Master delivers one MCQ at a time, evaluates answers, and accepts shared Quiz tab results as context
@@ -239,7 +240,7 @@ Plans:
 | 12. Backend Upload Endpoint | v6.0 | 3/3 | Complete | 2026-03-14 |
 | 13. Frontend Upload UI | v6.0 | 4/4 | Complete | 2026-03-14 |
 | 14. Team Foundation | 2/2 | Complete    | 2026-03-14 | - |
-| 15. Full Specialist Roster + Guardrails | 1/2 | In Progress|  | - |
+| 15. Full Specialist Roster + Guardrails | 2/2 | Complete    | 2026-03-14 | - |
 | 16. Frontend Tutor Tab | v7.0 | 0/TBD | Not started | - |
 | 17. In-Tutor Quiz Mode | v7.0 | 0/TBD | Not started | - |
 | 18. Adaptive Intelligence | v7.0 | 0/TBD | Not started | - |

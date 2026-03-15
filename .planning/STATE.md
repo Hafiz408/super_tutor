@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-03-15 after v7.0 milestone start)
 ## Current Position
 
 Phase: 15 of 18 (Full Specialist Roster + Guardrails) — IN PROGRESS
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In Progress
-Last activity: 2026-03-15 — Phase 15 Plan 01 complete; TopicRelevanceGuardrail (GUARD-01) + validate_team_output (GUARD-02) + rejected SSE event in tutor router
+Last activity: 2026-03-15 — Phase 15 Plan 02 complete; Researcher (TEAM-04) + ContentWriter (TEAM-05) specialists added; TopicRelevanceGuardrail + validate_team_output wired onto Team constructor
 
 Progress: [███████████████░░░░] 15/18 phases in progress (v1.0–v7.0 Team Foundation shipped; Phase 15 guardrails started)
 
@@ -47,6 +47,7 @@ Progress: [███████████████░░░░] 15/18 phas
 *Updated after each plan completion*
 | Phase 14-team-foundation P02 | 2 | 2 tasks | 2 files |
 | Phase 15-guardrails P01 | 5min | 2 tasks | 2 files |
+| Phase 15-full-specialist-roster-guardrails P02 | 3min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -69,6 +70,9 @@ All v1.0–v6.0 decisions logged in PROJECT.md Key Decisions table.
 - tutor_history_window default 10 (tutor conversations deeper per turn but shorter total)
 - [Phase 14-team-foundation]: HTTP 422 for missing source_content (not 400) — client error in session data per CONTEXT.md locked decision
 - [Phase 14-team-foundation]: tutor:{session_id} namespace prevents workflow session row overwrite in agno_sessions SQLite table
+- [Phase 15-02]: Graceful TavilyTools fallback: factory catches MissingAPIKeyError and sets researcher_tools=[] with warning — prevents startup crash when TAVILY_API_KEY is not configured
+- [Phase 15-02]: ContentWriter strictly prohibits raw JSON — avoids confusion with standalone flashcard_agent.py and quiz_agent.py which produce JSON
+- [Phase 15-02]: Coordinator routing rules updated to four cases: Explainer (material questions), Researcher (go deeper/external), ContentWriter (flashcards/notes/quiz), off-topic (direct reject)
 
 ### Pending Todos
 
@@ -81,5 +85,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-15
-Stopped at: Completed 15-01-PLAN.md — TopicRelevanceGuardrail (GUARD-01) + validate_team_output (GUARD-02) + rejected SSE event in tutor router. Phase 15 Plan 01 complete. Ready for Phase 15 Plan 02.
+Stopped at: Completed 15-02-PLAN.md — Researcher (TEAM-04) + ContentWriter (TEAM-05) + guardrail hooks on Team. Phase 15 Plan 02 complete. Ready for Phase 15 Plan 03.
 Resume file: None
