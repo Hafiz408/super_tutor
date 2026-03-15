@@ -26,6 +26,15 @@ def _build_model(provider: str, model_id: str, api_key: str):
             kwargs["base_url"] = "https://openrouter.ai/api/v1"
         elif provider == "mistral":
             kwargs["base_url"] = "https://api.mistral.ai/v1"
+            # Mistral's OpenAI-compatible API rejects the 'developer' role that agno
+            # injects by default for system messages. Override role_map to keep 'system'.
+            kwargs["role_map"] = {
+                "system": "system",
+                "user": "user",
+                "assistant": "assistant",
+                "tool": "tool",
+                "model": "assistant",
+            }
         return OpenAIChat(**kwargs)
 
 
