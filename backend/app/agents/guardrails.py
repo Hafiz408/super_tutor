@@ -124,6 +124,8 @@ class TopicRelevanceGuardrail(BaseGuardrail):
                     kwargs["base_url"] = "https://openrouter.ai/api/v1"
                 elif provider == "groq":
                     kwargs["base_url"] = "https://api.groq.com/openai/v1"
+                elif provider == "mistral":
+                    kwargs["base_url"] = "https://api.mistral.ai/v1"
                 client = OpenAI(**kwargs)
                 resp = client.chat.completions.create(
                     model=model_id,

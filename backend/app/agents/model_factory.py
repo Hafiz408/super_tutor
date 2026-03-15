@@ -24,6 +24,8 @@ def _build_model(provider: str, model_id: str, api_key: str):
         kwargs = dict(id=model_id, api_key=api_key, max_retries=_SDK_RETRIES)
         if provider == "openrouter":
             kwargs["base_url"] = "https://openrouter.ai/api/v1"
+        elif provider == "mistral":
+            kwargs["base_url"] = "https://api.mistral.ai/v1"
         return OpenAIChat(**kwargs)
 
 
