@@ -114,8 +114,11 @@ export default function StudyPage() {
   });
 
   const [isTutorStreaming, setIsTutorStreaming] = useState(false);
+  const [tutorInput, setTutorInput] = useState("");
   const tutorReaderRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
   const tutorIntroTriggeredRef = useRef(false);
+  const tutorMessagesEndRef = useRef<HTMLDivElement | null>(null);
+  const tutorTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Cancel any in-flight stream on unmount to release the network connection.
   useEffect(() => {
@@ -159,6 +162,25 @@ export default function StudyPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatHistory]);
+
+  // Auto-scroll tutor chat to bottom when tutorHistory changes
+  useEffect(() => {
+    tutorMessagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [tutorHistory]);
+
+  // Intro auto-trigger — fires once when Tutor tab is first opened with no history
+  useEffect(() => {
+    if (activeTab !== "tutor") return;
+    if (tutorIntroSeen || tutorHistory.length > 0) return;
+    if (!session || isTutorStreaming) return;
+    if (tutorIntroTriggeredRef.current) return; // sync guard against double-trigger on re-render
+    tutorIntroTriggeredRef.current = true;
+    setTutorIntroSeen(true);
+    try {
+      localStorage.setItem(`tutor_intro_seen:${sessionId}`, "true");
+    } catch { /* ignore */ }
+    sendTutorMessage(""); // sendTutorMessage sends sentinel string when empty — see Plan 01
+  }, [activeTab, session, sessionId]); // minimal deps — ref+state guards handle the rest
 
   // Auto-focus textarea when chat panel opens
   useEffect(() => {
@@ -844,6 +866,88 @@ export default function StudyPage() {
                   </button>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Tutor */}
+          {activeTab === "tutor" && (
+            <div className="flex flex-col h-full">
+              {/* Message list */}
+              <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
+                {tutorHistory.map((msg, i) => (
+                  <div
+                    key={i}
+                    className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                  >
+                    {msg.role === "user" ? (
+                      <div className="max-w-[80%] rounded-2xl rounded-br-sm px-3 py-2 text-sm leading-relaxed bg-blue-600 text-white">
+                        {msg.content}
+                      </div>
+                    ) : (
+                      <div className="w-full max-w-[90%] rounded-2xl rounded-bl-sm px-3 py-2 text-sm leading-relaxed bg-zinc-100 text-zinc-900">
+                        <div className="prose prose-sm max-w-none">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {/* Typing indicator */}
+                {isTutorStreaming && tutorHistory[tutorHistory.length - 1]?.content === "" && (
+                  <div className="flex justify-start">
+                    <div className="rounded-2xl rounded-bl-sm px-3 py-2 bg-zinc-100">
+                      <div className="flex gap-1 items-center h-5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce" style={{ animationDelay: "0ms" }} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce" style={{ animationDelay: "150ms" }} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce" style={{ animationDelay: "300ms" }} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div ref={tutorMessagesEndRef} />
+              </div>
+
+              {/* Input area */}
+              <div className="border-t border-zinc-200 px-4 py-3 flex gap-2 items-end">
+                <textarea
+                  ref={tutorTextareaRef}
+                  rows={1}
+                  value={tutorInput}
+                  onChange={(e) => {
+                    setTutorInput(e.target.value);
+                    e.target.style.height = "auto";
+                    e.target.style.height = `${e.target.scrollHeight}px`;
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      if (tutorInput.trim() && !isTutorStreaming) {
+                        const msg = tutorInput;
+                        setTutorInput("");
+                        if (tutorTextareaRef.current) tutorTextareaRef.current.style.height = "auto";
+                        sendTutorMessage(msg);
+                      }
+                    }
+                  }}
+                  disabled={isTutorStreaming || !session}
+                  placeholder="Ask your tutor anything about this material..."
+                  className="flex-1 resize-none rounded-xl border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 max-h-32 overflow-y-auto"
+                />
+                <button
+                  onClick={() => {
+                    if (tutorInput.trim() && !isTutorStreaming) {
+                      const msg = tutorInput;
+                      setTutorInput("");
+                      if (tutorTextareaRef.current) tutorTextareaRef.current.style.height = "auto";
+                      sendTutorMessage(msg);
+                    }
+                  }}
+                  disabled={!tutorInput.trim() || isTutorStreaming || !session}
+                  className="rounded-xl bg-blue-600 text-white px-3 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
+                >
+                  Send
+                </button>
+              </div>
             </div>
           )}
         </main>
