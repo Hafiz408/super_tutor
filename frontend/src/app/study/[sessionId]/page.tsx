@@ -13,7 +13,7 @@ const MODE_LABELS: Record<TutoringType, string> = {
   advanced: "Advanced",
 };
 
-type Tab = "notes" | "flashcards" | "quiz";
+type Tab = "notes" | "flashcards" | "quiz" | "tutor";
 
 const TAB_ICONS: Record<Tab, React.ReactNode> = {
   notes: (
@@ -34,6 +34,19 @@ const TAB_ICONS: Record<Tab, React.ReactNode> = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 17h.01" />
     </svg>
   ),
+  tutor: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5 shrink-0">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+    </svg>
+  ),
+};
+
+const TAB_LABELS: Record<Tab, string> = {
+  notes: "Notes",
+  flashcards: "Flashcards",
+  quiz: "Quiz",
+  tutor: "Tutor",
 };
 
 export default function StudyPage() {
@@ -82,6 +95,28 @@ export default function StudyPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
 
+  // Tutor tab state — independent of existing floating chat panel
+  const [tutorHistory, setTutorHistory] = useState<{ role: "user" | "assistant"; content: string }[]>(() => {
+    try {
+      const stored = localStorage.getItem(`tutor_history:${sessionId}`);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [tutorIntroSeen, setTutorIntroSeen] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(`tutor_intro_seen:${sessionId}`) === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  const [isTutorStreaming, setIsTutorStreaming] = useState(false);
+  const tutorReaderRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
+  const tutorIntroTriggeredRef = useRef(false);
+
   // Cancel any in-flight stream on unmount to release the network connection.
   useEffect(() => {
     return () => { readerRef.current?.cancel(); };
@@ -102,6 +137,15 @@ export default function StudyPage() {
       localStorage.setItem(`chat:${sessionId}`, JSON.stringify(chatHistory));
     }
   }, [chatHistory, sessionId]);
+
+  // Persist tutor history to localStorage whenever it changes
+  useEffect(() => {
+    if (tutorHistory.length > 0) {
+      try {
+        localStorage.setItem(`tutor_history:${sessionId}`, JSON.stringify(tutorHistory));
+      } catch { /* ignore quota errors */ }
+    }
+  }, [tutorHistory, sessionId]);
 
   useEffect(() => {
     try {
@@ -385,6 +429,102 @@ export default function StudyPage() {
     }
   }
 
+  async function sendTutorMessage(userMessage: string) {
+    if (!session || isTutorStreaming) return;
+    if (userMessage.trim()) {
+      setTutorHistory((prev) => [...prev, { role: "user" as const, content: userMessage.trim() }]);
+    }
+    setIsTutorStreaming(true);
+    setTutorHistory((prev) => [...prev, { role: "assistant" as const, content: "" }]);
+
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tutor/${sessionId}/stream`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: userMessage.trim() || "Hello! Please introduce yourself and your capabilities.",
+          tutoring_type: session.tutoring_type,
+          session_id: sessionId,
+        }),
+      });
+
+      if (!res.ok || !res.body) throw new Error("Tutor stream failed");
+
+      const reader = res.body.getReader();
+      tutorReaderRef.current = reader;
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const raw = line.slice(6).trim();
+          if (!raw) continue;
+          try {
+            const parsed = JSON.parse(raw);
+            if (typeof parsed.token === "string") {
+              setTutorHistory((prev) => {
+                const next = [...prev];
+                const last = next[next.length - 1];
+                if (last?.role === "assistant") {
+                  next[next.length - 1] = { ...last, content: last.content + parsed.token };
+                }
+                return next;
+              });
+            } else if (typeof parsed.error === "string") {
+              setTutorHistory((prev) => {
+                const next = [...prev];
+                const last = next[next.length - 1];
+                if (last?.role === "assistant") {
+                  next[next.length - 1] = { ...last, content: parsed.error };
+                }
+                return next;
+              });
+              setIsTutorStreaming(false);
+              return;
+            } else if (typeof parsed.reason === "string") {
+              // GUARD-01 rejection — friendly redirect from TopicRelevanceGuardrail
+              setTutorHistory((prev) => {
+                const next = [...prev];
+                const last = next[next.length - 1];
+                if (last?.role === "assistant") {
+                  next[next.length - 1] = { ...last, content: parsed.reason };
+                }
+                return next;
+              });
+              setIsTutorStreaming(false);
+              return;
+            }
+          } catch { /* non-JSON line — ignore */ }
+        }
+      }
+      // Remove empty assistant bubble if stream completed without content
+      setTutorHistory((prev) => {
+        const last = prev[prev.length - 1];
+        if (last?.role === "assistant" && last.content === "") return prev.slice(0, -1);
+        return prev;
+      });
+    } catch {
+      setTutorHistory((prev) => {
+        const next = [...prev];
+        const last = next[next.length - 1];
+        if (last?.role === "assistant" && last.content === "") {
+          next[next.length - 1] = { ...last, content: "Sorry, something went wrong. Please try again." };
+        }
+        return next;
+      });
+    } finally {
+      tutorReaderRef.current = null;
+      setIsTutorStreaming(false);
+    }
+  }
+
   if (loading) {
     return (
       <main className="flex items-center justify-center min-h-[80vh]">
@@ -428,18 +568,18 @@ export default function StudyPage() {
         </div>
 
         <nav className="flex flex-col gap-0.5">
-          {(["notes", "flashcards", "quiz"] as Tab[]).map((tab) => (
+          {(["notes", "flashcards", "quiz", "tutor"] as Tab[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex items-center gap-2.5 w-full text-left px-2 py-2 rounded-lg text-sm capitalize transition-colors ${
+              className={`flex items-center gap-2.5 w-full text-left px-2 py-2 rounded-lg text-sm transition-colors ${
                 activeTab === tab
                   ? "bg-zinc-100 text-zinc-900 font-medium"
                   : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"
               }`}
             >
               {TAB_ICONS[tab]}
-              {tab}
+              {tab === "tutor" ? "Personal Tutor" : tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
         </nav>
@@ -713,18 +853,18 @@ export default function StudyPage() {
           className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-zinc-100 flex z-50"
           style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
         >
-          {(["notes", "flashcards", "quiz"] as Tab[]).map((tab) => (
+          {(["notes", "flashcards", "quiz", "tutor"] as Tab[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 flex flex-col items-center justify-center py-2 gap-1 text-[0.6875rem] capitalize transition-colors min-h-[56px] ${
+              className={`flex-1 flex flex-col items-center justify-center py-2 gap-1 text-[0.6875rem] transition-colors min-h-[56px] ${
                 activeTab === tab
                   ? "text-blue-600 font-semibold"
                   : "text-zinc-400"
               }`}
             >
               {TAB_ICONS[tab]}
-              {tab}
+              {TAB_LABELS[tab]}
             </button>
           ))}
         </nav>
