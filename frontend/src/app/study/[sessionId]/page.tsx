@@ -818,6 +818,15 @@ export default function StudyPage() {
                           You scored {correctCount} / {session.quiz.length}
                         </h3>
                         <p className="text-sm text-zinc-500 mt-1">Review your answers below.</p>
+                        <button
+                          onClick={() => {
+                            setTutorInput(`I just completed the quiz and scored ${correctCount} out of ${session.quiz.length}.`);
+                            setActiveTab("tutor");
+                          }}
+                          className="mt-2 text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                        >
+                          Share results with tutor
+                        </button>
                       </div>
 
                       <div className="flex flex-col gap-3">
@@ -891,7 +900,7 @@ export default function StudyPage() {
 
           {/* Tutor */}
           {activeTab === "tutor" && (
-            <div className="flex flex-col flex-1 overflow-hidden">
+            <div data-testid="tutor-chat" className="flex flex-col flex-1 overflow-hidden">
               {/* Tutor header */}
               <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-100 shrink-0">
                 <span className="text-xs text-zinc-400">
