@@ -15,7 +15,10 @@ def _build_model(provider: str, model_id: str, api_key: str):
         return Claude(id=model_id, api_key=api_key)
     elif provider == "groq":
         from agno.models.groq import Groq
-        return Groq(id=model_id, api_key=api_key)
+        try:
+            return Groq(id=model_id, api_key=api_key, max_retries=_SDK_RETRIES)
+        except TypeError:
+            return Groq(id=model_id, api_key=api_key)
     elif provider == "openai":
         from agno.models.openai import OpenAIChat
         return OpenAIChat(id=model_id, api_key=api_key, max_retries=_SDK_RETRIES)

@@ -1,4 +1,4 @@
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 from typing import List, Any
@@ -59,6 +59,17 @@ class Settings(BaseSettings):
                     pass
             return [i.strip() for i in v.split(",")]
         return v
+
+    @model_validator(mode="after")
+    def warn_if_api_key_missing(self) -> "Settings":
+        local_providers = {"local", "ollama", "llamacpp"}
+        if self.agent_provider not in local_providers and not self.agent_api_key:
+            import logging
+            logging.getLogger("super_tutor.config").warning(
+                "agent_api_key is not set for provider '%s' — LLM calls will fail at runtime",
+                self.agent_provider,
+            )
+        return self
 
 
 @lru_cache()
