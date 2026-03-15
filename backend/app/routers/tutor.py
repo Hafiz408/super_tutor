@@ -158,13 +158,18 @@ async def tutor_stream(session_id: str, request: Request, body: TutorStreamReque
         as an exception — it emits a TeamRunError event instead. We inspect the
         chunk to distinguish off-topic rejections from real errors and re-raise
         InputCheckError so the outer handler sends the correct SSE event.
+
+        Also yields a final {"event": "_accumulated", "data": <full_text>} sentinel
+        for post-stream focus area extraction. Callers must consume and discard this event.
         """
         error_chunk = None
+        accumulated: list[str] = []
         async for chunk in active_team.arun(message, stream=True, session_id=tutor_session_id):
             if chunk.event == TUTOR_ERROR_EVENT:
                 error_chunk = chunk
                 break
             if chunk.event in TUTOR_TOKEN_EVENTS and chunk.content:
+                accumulated.append(chunk.content)
                 yield {"event": "token", "data": json.dumps({"token": chunk.content})}
         if error_chunk is not None:
             err_str = (
@@ -174,14 +179,38 @@ async def tutor_stream(session_id: str, request: Request, body: TutorStreamReque
             if "not related" in err_str or "off_topic" in err_str or "off-topic" in err_str:
                 raise InputCheckError("Message is not related to the session topic.")
             raise RuntimeError("team_run_error")
+        # Sentinel: yield accumulated text for caller to capture — never forwarded to SSE client.
+        yield {"event": "_accumulated", "data": "".join(accumulated)}
 
     async def event_generator() -> AsyncGenerator[dict, None]:
         yield {"event": "stream_start", "data": json.dumps({})}
+
+        # Pre-stream: extract quiz score from message if it matches the share-results pattern.
+        # This runs before team.arun() so it captures the score even if the Advisor fires later.
+        quiz_score = _extract_quiz_score(body.message)
+        accumulated_text = ""
+
         try:
             async for event in _stream_team(team, body.message):
+                if event["event"] == "_accumulated":
+                    # Internal sentinel — capture text, do NOT forward to SSE client.
+                    accumulated_text = event["data"]
+                    continue
                 yield event
             logger.info("Tutor stream done", extra={"session_id": session_id})
             yield {"event": "done", "data": json.dumps({})}
+
+            # Post-done persistence — fire-and-forget via create_task so done event
+            # is already yielded before any DB I/O starts (Pitfall 2 in RESEARCH.md).
+            focus_areas = _extract_focus_areas(accumulated_text)
+            asyncio.create_task(
+                _persist_tutor_adaptive_data(
+                    session_id=session_id,
+                    traces_db=traces_db,
+                    quiz_score=quiz_score,
+                    focus_areas=focus_areas,
+                )
+            )
 
         except InputCheckError:
             logger.info("Topic guardrail triggered — session_id=%s user_message=%s", session_id, body.message[:100])
@@ -205,10 +234,24 @@ async def tutor_stream(session_id: str, request: Request, body: TutorStreamReque
                 fallback_team = build_tutor_team(**team_kwargs, model=fallback_model)
                 yield {"event": "token", "data": json.dumps({"token": "\n*(Switching to backup model…)*\n\n"})}
                 try:
+                    accumulated_text = ""
                     async for event in _stream_team(fallback_team, body.message):
+                        if event["event"] == "_accumulated":
+                            accumulated_text = event["data"]
+                            continue
                         yield event
                     logger.info("Tutor stream done (fallback) — session_id=%s", session_id)
                     yield {"event": "done", "data": json.dumps({})}
+                    # Post-done persistence for fallback path too
+                    focus_areas = _extract_focus_areas(accumulated_text)
+                    asyncio.create_task(
+                        _persist_tutor_adaptive_data(
+                            session_id=session_id,
+                            traces_db=traces_db,
+                            quiz_score=quiz_score,
+                            focus_areas=focus_areas,
+                        )
+                    )
                 except Exception as e2:
                     logger.error("Fallback tutor stream error: %s", e2, exc_info=True)
                     yield {"event": "error", "data": json.dumps({"error": "Both primary and backup models failed. Please try again later."})}
