@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-03-15 after v7.0 milestone start)
 
 **Core value:** A user gives a topic (URL, description, or document), picks how they want to learn, and gets a complete, ready-to-study session in minutes — no account needed, no friction.
-**Current focus:** Phase 15 (Full Specialist Roster + Guardrails)
+**Current focus:** Phase 16 (Frontend Tutor Tab)
 
 ## Current Position
 
-Phase: 15 of 18 (Full Specialist Roster + Guardrails) — IN PROGRESS
-Plan: 2 of 3 in current phase
+Phase: 16 of 18 (Frontend Tutor Tab) — IN PROGRESS
+Plan: 1 of 3 in current phase
 Status: In Progress
-Last activity: 2026-03-15 — Phase 15 Plan 02 complete; Researcher (TEAM-04) + ContentWriter (TEAM-05) specialists added; TopicRelevanceGuardrail + validate_team_output wired onto Team constructor
+Last activity: 2026-03-15 — Phase 16 Plan 01 complete; Tab union extended with "tutor", tutor state variables + sendTutorMessage() SSE function added to study page
 
 Progress: [███████████████░░░░] 15/18 phases in progress (v1.0–v7.0 Team Foundation shipped; Phase 15 guardrails started)
 
@@ -48,6 +48,7 @@ Progress: [███████████████░░░░] 15/18 phas
 | Phase 14-team-foundation P02 | 2 | 2 tasks | 2 files |
 | Phase 15-guardrails P01 | 5min | 2 tasks | 2 files |
 | Phase 15-full-specialist-roster-guardrails P02 | 3min | 2 tasks | 2 files |
+| Phase 16-frontend-tutor-tab P01 | 2 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,9 @@ All v1.0–v6.0 decisions logged in PROJECT.md Key Decisions table.
 - [Phase 15-02]: Graceful TavilyTools fallback: factory catches MissingAPIKeyError and sets researcher_tools=[] with warning — prevents startup crash when TAVILY_API_KEY is not configured
 - [Phase 15-02]: ContentWriter strictly prohibits raw JSON — avoids confusion with standalone flashcard_agent.py and quiz_agent.py which produce JSON
 - [Phase 15-02]: Coordinator routing rules updated to four cases: Explainer (material questions), Researcher (go deeper/external), ContentWriter (flashcards/notes/quiz), off-topic (direct reject)
+- [Phase 16-01]: TAB_LABELS record for mobile bar short labels; inline ternary for desktop sidebar Personal Tutor label
+- [Phase 16-01]: isTutorStreaming is fully independent from isStreaming — floating chat panel state untouched
+- [Phase 16-01]: Sentinel fallback string satisfies backend TutorStreamRequest min_length=1 when intro triggered with empty input
 
 ### Pending Todos
 
@@ -85,5 +89,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-15
-Stopped at: Completed 15-02-PLAN.md — Researcher (TEAM-04) + ContentWriter (TEAM-05) + guardrail hooks on Team. Phase 15 Plan 02 complete. Ready for Phase 15 Plan 03.
+Stopped at: Completed 16-01-PLAN.md — Tab union extended with "tutor", tutor state/sendTutorMessage() added. Phase 16 Plan 01 complete. Ready for Phase 16 Plan 02.
 Resume file: None
