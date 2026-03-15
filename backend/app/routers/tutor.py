@@ -5,7 +5,7 @@ import re
 from datetime import datetime, timezone
 from typing import AsyncGenerator
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Path
 from sse_starlette.sse import EventSourceResponse
 from agno.db.sqlite import SqliteDb
 from agno.exceptions import InputCheckError
@@ -13,18 +13,16 @@ from agno.exceptions import InputCheckError
 from app.models.tutor import TutorStreamRequest
 from app.agents.tutor_team import build_tutor_team, is_rate_limit_error, TUTOR_TOKEN_EVENTS, TUTOR_ERROR_EVENT
 from app.agents.model_factory import get_fallback_model
-from app.dependencies import get_traces_db, limiter
+from app.dependencies import get_traces_db, limiter, ACTIVE_TASKS
 from app.config import get_settings
 from app.workflows.session_workflow import build_session_workflow
 
 logger = logging.getLogger("super_tutor.tutor")
 
-# Strong references to fire-and-forget background tasks — prevents GC collection before completion.
-_background_tasks: set[asyncio.Task] = set()
-
 _QUIZ_SCORE_RE = re.compile(r"scored?\s+(\d+)\s+out\s+of\s+(\d+)", re.IGNORECASE)
 _FOCUS_AREA_RE = re.compile(
-    r"(?:flashcards?|notes?|content)\s+on\s+['\"]?([^'\"?\.\n]{3,60})['\"]?",
+    r"(?:flashcards?|notes?|content|material|concepts?|topics?)\s+on\s+['\"]?([^'\"?\.\n]{3,60})['\"]?"
+    r"|(?:focus(?:ing)?\s+on|review(?:ing)?\s+|study(?:ing)?\s+)([^'\"?\.\n]{3,60})",
     re.IGNORECASE,
 )
 
@@ -43,7 +41,12 @@ def _extract_quiz_score(message: str) -> dict | None:
 
 def _extract_focus_areas(response_text: str) -> list[str]:
     """Extract named focus areas from Advisor response text. Returns [] if none found."""
-    return [m.group(1).strip() for m in _FOCUS_AREA_RE.finditer(response_text)]
+    areas = []
+    for m in _FOCUS_AREA_RE.finditer(response_text):
+        concept = (m.group(1) or m.group(2) or "").strip()
+        if concept:
+            areas.append(concept)
+    return areas
 
 
 async def _persist_tutor_adaptive_data(
@@ -62,7 +65,7 @@ async def _persist_tutor_adaptive_data(
         return
     try:
         wf = build_session_workflow(session_id=session_id, session_db=traces_db)
-        existing = wf.get_session(session_id=session_id)
+        existing = await asyncio.to_thread(wf.get_session, session_id=session_id)
         if existing is None:
             logger.warning("_persist_tutor_adaptive_data: session not found — session_id=%s", session_id)
             return
@@ -92,7 +95,12 @@ router = APIRouter()
 
 @router.post("/{session_id}/stream")
 @limiter.limit(get_settings().rate_limit_tutor)
-async def tutor_stream(session_id: str, request: Request, body: TutorStreamRequest, traces_db: SqliteDb = Depends(get_traces_db)):
+async def tutor_stream(
+    session_id: str = Path(max_length=128, pattern=r'^[a-zA-Z0-9_-]+$'),
+    request: Request = ...,
+    body: TutorStreamRequest = ...,
+    traces_db: SqliteDb = Depends(get_traces_db),
+):
     """
     Accept: JSON body with message, tutoring_type, session_id.
     source_content and notes are loaded from SQLite session state via session_id.
@@ -107,7 +115,7 @@ async def tutor_stream(session_id: str, request: Request, body: TutorStreamReque
     # Load session from SQLite session state — authoritative source.
     try:
         wf = build_session_workflow(session_id=session_id, session_db=traces_db)
-        session = wf.get_session(session_id=session_id)
+        session = await asyncio.to_thread(wf.get_session, session_id=session_id)
     except Exception as e:
         logger.error("Failed to load session for tutor — session_id=%s error=%s", session_id, e, exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to load session data. Please try again.")
@@ -148,8 +156,8 @@ async def tutor_stream(session_id: str, request: Request, body: TutorStreamReque
     )
     team = build_tutor_team(**team_kwargs)
 
-    # Fallback model is built lazily inside the rate-limit handler — not upfront.
-    # Building two full agent trees on every request is wasteful; rate-limits are rare.
+    # Fallback model wrapper is built upfront (cheap — no network I/O).
+    # The full fallback team is built lazily inside the rate-limit exception handler.
     fallback_model = get_fallback_model()
 
     logger.info(
@@ -214,8 +222,8 @@ async def tutor_stream(session_id: str, request: Request, body: TutorStreamReque
                     focus_areas=focus_areas,
                 )
             )
-            _background_tasks.add(task)
-            task.add_done_callback(_background_tasks.discard)
+            ACTIVE_TASKS.add(task)
+            task.add_done_callback(ACTIVE_TASKS.discard)
 
         try:
             async for event in _stream_and_persist(team, body.message):
