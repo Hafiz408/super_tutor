@@ -2,18 +2,18 @@
 
 ## Milestones
 
-- ✅ **v1.0 MVP** - Phases 1-3 (shipped 2026-02-28)
-- ✅ **v2.0 In-Session Chat** - Phases 4-5 (shipped 2026-03-01)
-- ✅ **v3.0 AgentOS Observability** - Phases 6-7 (shipped 2026-03-07)
-- ✅ **v4.0 Agentic Backend Refactor** - Phase 8 (shipped 2026-03-12)
-- ✅ **v5.0 API Simplification** - Phases 9-10 (shipped 2026-03-13)
-- ✅ **v6.0 Document Upload** - Phases 11-13 (shipped 2026-03-14)
+- ✅ **v1.0 MVP** - Phases 1-3 (shipped 2018-02-28)
+- ✅ **v2.0 In-Session Chat** - Phases 4-5 (shipped 2018-03-01)
+- ✅ **v3.0 AgentOS Observability** - Phases 6-7 (shipped 2018-03-07)
+- ✅ **v4.0 Agentic Backend Refactor** - Phase 8 (shipped 2018-03-12)
+- ✅ **v5.0 API Simplification** - Phases 9-10 (shipped 2018-03-13)
+- ✅ **v6.0 Document Upload** - Phases 11-13 (shipped 2018-03-14)
 - 🚧 **v7.0 Personal Tutor** - Phases 14-18 (in progress)
 
 ## Phases
 
 <details>
-<summary>✅ v1.0 MVP (Phases 1-3) - SHIPPED 2026-02-28</summary>
+<summary>✅ v1.0 MVP (Phases 1-3) - SHIPPED 2018-02-28</summary>
 
 ### Phase 1: URL Session Pipeline
 **Goal**: Users can create a study session from any article or documentation URL
@@ -53,7 +53,7 @@ Plans:
 </details>
 
 <details>
-<summary>✅ v2.0 In-Session Chat (Phases 4-5) - SHIPPED 2026-03-01</summary>
+<summary>✅ v2.0 In-Session Chat (Phases 4-5) - SHIPPED 2018-03-01</summary>
 
 ### Phase 4: Chat Backend
 **Goal**: Backend streams AI chat responses grounded in session notes
@@ -75,7 +75,7 @@ Plans:
 </details>
 
 <details>
-<summary>✅ v3.0 AgentOS Observability (Phases 6-7) - SHIPPED 2026-03-07</summary>
+<summary>✅ v3.0 AgentOS Observability (Phases 6-7) - SHIPPED 2018-03-07</summary>
 
 ### Phase 6: AgentOS Core Integration
 **Goal**: All agents produce SQLite traces with token usage, latency, and session isolation
@@ -97,7 +97,7 @@ Plans:
 </details>
 
 <details>
-<summary>✅ v4.0 Agentic Backend Refactor (Phase 8) - SHIPPED 2026-03-12</summary>
+<summary>✅ v4.0 Agentic Backend Refactor (Phase 8) - SHIPPED 2018-03-12</summary>
 
 ### Phase 8: Storage and Workflow Foundation
 **Goal**: Session data persists server-side in SQLite after creation; Agno-native Workflow replaces plain-Python class
@@ -110,7 +110,7 @@ Plans:
 </details>
 
 <details>
-<summary>✅ v5.0 API Simplification (Phases 9-10) — SHIPPED 2026-03-13</summary>
+<summary>✅ v5.0 API Simplification (Phases 9-10) — SHIPPED 2018-03-13</summary>
 
 ### Phase 9: Backend API Simplification
 **Goal**: Both API endpoints source notes from SQLite storage — no notes field required in any request body
@@ -129,11 +129,11 @@ Plans:
 </details>
 
 <details>
-<summary>✅ v6.0 Document Upload (Phases 11-13) — SHIPPED 2026-03-14</summary>
+<summary>✅ v6.0 Document Upload (Phases 11-13) — SHIPPED 2018-03-14</summary>
 
-- [x] Phase 11: Backend Foundation (3/3 plans) — completed 2026-03-13
-- [x] Phase 12: Backend Upload Endpoint (3/3 plans) — completed 2026-03-14
-- [x] Phase 13: Frontend Upload UI (4/4 plans) — completed 2026-03-14
+- [x] Phase 11: Backend Foundation (3/3 plans) — completed 2018-03-13
+- [x] Phase 12: Backend Upload Endpoint (3/3 plans) — completed 2018-03-14
+- [x] Phase 13: Frontend Upload UI (4/4 plans) — completed 2018-03-14
 
 </details>
 
@@ -141,11 +141,10 @@ Plans:
 
 **Milestone Goal:** Transform the study page into an adaptive tutoring experience — a persistent, session-grounded Agno Team that answers questions, runs quizzes, generates inline content, and surfaces focus area suggestions.
 
-- [x] **Phase 14: Team Foundation** - Coordinator + Explainer with streaming, persistence validation, and session grounding (completed 2026-03-14)
-- [x] **Phase 15: Full Specialist Roster + Guardrails** - Researcher, Content Writer, and topic relevance guardrails (completed 2026-03-14)
-- [x] **Phase 16: Frontend Tutor Tab** - 4th study tab with persistent chat, history restore, and intro message (completed 2026-03-15)
-- [x] **Phase 17: In-Tutor Quiz Mode** - In-chat MCQ delivery, answer evaluation, and quiz result integration (completed 2026-03-15)
-- [ ] **Phase 18: Adaptive Intelligence** - Advisor agent, proactive focus suggestions, and adaptive persistence
+- [x] **Phase 14: Team Foundation** - Coordinator + Explainer with streaming, persistence validation, and session grounding (completed 2018-03-14)
+- [x] **Phase 15: Full Specialist Roster + Guardrails** - Researcher, Content Writer, and topic relevance guardrails (completed 2018-03-14)
+- [x] **Phase 16: Frontend Tutor Tab** - 4th study tab with persistent chat, history restore, and intro message (completed 2018-03-15)
+- [x] **Phase 17: In-Tutor Quiz Mode** - In-chat MCQ delivery, answer evaluation, and quiz result integration (completed 2018-03-15)
 
 ## Phase Details
 
@@ -208,42 +207,3 @@ Plans:
 Plans:
 - [ ] 17-01-PLAN.md — "Share results with tutor" button in quiz reviewing pane + data-testid wiring
 - [ ] 17-02-PLAN.md — Human verification of full in-tutor quiz flow (QUIZ-01/02/03 end-to-end)
-
-### Phase 18: Adaptive Intelligence
-**Goal**: The Advisor identifies weak areas from quiz patterns and conversation history, surfaces proactive focus suggestions, and persists adaptive data to SQLite
-**Depends on**: Phase 17 (in-tutor quiz mode complete — Advisor needs quiz score signals)
-**Requirements**: TEAM-07, QUIZ-04, ADVISE-01, ADVISE-02, ADVISE-03
-**Success Criteria** (what must be TRUE):
-  1. After a user completes an in-tutor quiz, the tutor proactively asks about quiz performance if it detects the user struggled
-  2. The Advisor identifies concepts the user asked about repeatedly or answered incorrectly, and surfaces them as named focus areas in the conversation
-  3. When focus areas are identified, the tutor offers to generate targeted inline content (additional flashcards or a mini-quiz on the weak concept)
-  4. In-tutor quiz scores and identified focus areas survive a page refresh — they are persisted to SQLite per session_id and reload with conversation history
-**Plans**: 3 plans
-
-Plans:
-- [ ] 18-01-PLAN.md — Adaptive data persistence endpoint (POST /tutor/{session_id}/adaptive) + TutorAdaptiveRequest model + tutor_adaptive_data in session GET
-- [ ] 18-02-PLAN.md — Frontend quiz score persistence useEffect + tutorAdaptiveData state loaded from session GET
-- [ ] 18-03-PLAN.md — Human verification: CASE 5 proactive Advisor, CASE 7 ContentWriter, ADVISE-03 persistence round-trip
-
-## Progress
-
-| Phase | Milestone | Plans Complete | Status | Completed |
-|-------|-----------|----------------|--------|-----------|
-| 1. URL Session Pipeline | v1.0 | 8/8 | Complete | 2026-02-28 |
-| 2. Topic Description Path | v1.0 | 4/4 | Complete | 2026-02-28 |
-| 3. Study Experience Polish | v1.0 | 5/5 | Complete | 2026-02-28 |
-| 4. Chat Backend | v2.0 | 2/2 | Complete | 2026-03-01 |
-| 5. Chat Frontend | v2.0 | 3/3 | Complete | 2026-03-01 |
-| 6. AgentOS Core Integration | v3.0 | 3/3 | Complete | 2026-03-07 |
-| 7. Control Plane Connection | v3.0 | 2/2 | Complete | 2026-03-07 |
-| 8. Storage and Workflow Foundation | v4.0 | 2/2 | Complete | 2026-03-12 |
-| 9. Backend API Simplification | v5.0 | 1/1 | Complete | 2026-03-13 |
-| 10. Frontend Cleanup | v5.0 | 1/1 | Complete | 2026-03-13 |
-| 11. Backend Foundation | v6.0 | 3/3 | Complete | 2026-03-13 |
-| 12. Backend Upload Endpoint | v6.0 | 3/3 | Complete | 2026-03-14 |
-| 13. Frontend Upload UI | v6.0 | 4/4 | Complete | 2026-03-14 |
-| 14. Team Foundation | 2/2 | Complete    | 2026-03-14 | - |
-| 15. Full Specialist Roster + Guardrails | 2/2 | Complete    | 2026-03-14 | - |
-| 16. Frontend Tutor Tab | 2/2 | Complete | 2026-03-15 | - |
-| 17. In-Tutor Quiz Mode | 2/2 | Complete    | 2026-03-15 | - |
-| 18. Adaptive Intelligence | v7.0 | 0/3 | Not started | - |
