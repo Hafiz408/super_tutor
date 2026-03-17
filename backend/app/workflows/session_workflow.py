@@ -63,6 +63,33 @@ _TITLE_ERROR_PREFIXES = (
 )
 _TITLE_ERROR_SUBSTRINGS = ("returned error", "error occurred", "model error")
 
+# Substrings that indicate the agent returned an API/provider error string as content.
+# Covers: auth failures (401/403), rate limits (429), server errors (5xx), and SDK wrappers.
+_LLM_ERROR_SUBSTRINGS = (
+    '"rate_limit_exceeded"',
+    '"detail":"unauthorized"',
+    '"detail": "unauthorized"',
+    "status 401",
+    "status 403",
+    "status 429",
+    "status 500",
+    "status 502",
+    "status 503",
+    "api error occurred",
+    "sdkerror",
+    "invalid api key",
+    "authentication failed",
+    "unauthorized",
+)
+
+
+def _looks_like_llm_error(text: str) -> bool:
+    """Return True if text appears to be a provider error string rather than real content."""
+    lower = text.lower()
+    if text.strip().startswith('{"error":') and '"message"' in lower:
+        return True
+    return any(s in lower for s in _LLM_ERROR_SUBSTRINGS)
+
 
 def _is_valid_title(title: str) -> bool:
     """Return True if title looks like a genuine short title, not a provider error string."""
@@ -240,9 +267,10 @@ async def notes_step(step_input: StepInput, session_state: dict) -> StepOutput:
     logger.info("notes step done — elapsed=%.3fs", time.perf_counter() - _t, extra={"session_id": session_id, "step": "notes"})
 
     notes = notes_result.content or ""
-    # Detect provider error JSON stored as content (agno may swallow 429s and return error JSON)
-    if '"rate_limit_exceeded"' in notes or (notes.strip().startswith('{"error":') and '"message"' in notes):
-        raise RuntimeError(f"rate_limit_exceeded: {notes[:500]}")
+    # Detect provider error strings stored as content (agno may swallow API errors and return
+    # the error message as content — covers 401 auth, 429 rate limit, 5xx server errors, etc.)
+    if _looks_like_llm_error(notes):
+        raise RuntimeError(f"LLM API error: {notes.strip()[:500]}")
     if len(notes.strip()) < 100:
         raise RuntimeError(
             f"Notes generation failed — model returned: {notes.strip()!r}. Please try again."
@@ -603,7 +631,11 @@ async def run_workflow_background(
 
     except Exception as e:
         logger.error("Workflow failed — session_id=%s", session_id, exc_info=True)
-        update_session_status(session_id, "failed", "workflow_error", str(e))
+        error_str = str(e)
+        if "rate_limit_exceeded" in error_str or "status 429" in error_str.lower():
+            update_session_status(session_id, "failed", "rate_limit", error_str)
+        else:
+            update_session_status(session_id, "failed", "workflow_error", error_str)
     except BaseException:
         # CancelledError (e.g. server shutdown) is a BaseException, not Exception.
         # Update status before re-raising so the session doesn't stay stuck in 'pending'.

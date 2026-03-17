@@ -71,7 +71,7 @@ function LoadingContent() {
   const steps = buildProgressSteps(inputMode, generateFlashcards, generateQuiz);
 
   const [stepIndex, setStepIndex] = useState(0);
-  const [error, setError] = useState<{ kind: string; title: string; body: string } | null>(null);
+  const [error, setError] = useState<{ kind: string; title: string; body: string; details?: string } | null>(null);
 
   const stepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef(Date.now());
@@ -133,7 +133,11 @@ function LoadingContent() {
         if (data.status === "failed") {
           clearInterval(stepTimerRef.current!);
           const label = getErrorLabel(data.error_kind, data.error_message);
-          setError({ kind: data.error_kind, ...label });
+          setError({
+            kind: data.error_kind,
+            ...label,
+            details: data.error_message ?? undefined,
+          });
           return;
         }
 
@@ -182,6 +186,11 @@ function LoadingContent() {
           <div>
             <p className="font-semibold text-zinc-900 text-base">{error.title}</p>
             <p className="text-sm text-zinc-500 mt-1.5">{error.body}</p>
+            {error.details && (
+              <p className="text-xs text-zinc-400 mt-2 font-mono break-all line-clamp-3">
+                {error.details}
+              </p>
+            )}
           </div>
 
           <div className="flex gap-3 flex-wrap justify-center">
